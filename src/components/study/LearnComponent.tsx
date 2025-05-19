@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -247,7 +246,8 @@ export function LearnComponent({ sessionId, flashcards }: LearnComponentProps) {
         </div>
       )}
       
-      <style jsx>{`
+      <style>
+        {`
         .perspective-1000 {
           perspective: 1000px;
         }
@@ -263,7 +263,8 @@ export function LearnComponent({ sessionId, flashcards }: LearnComponentProps) {
         .rotate-y-180 {
           transform: rotateY(180deg);
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 }

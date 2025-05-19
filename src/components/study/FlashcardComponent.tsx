@@ -101,7 +101,7 @@ export function FlashcardComponent({
       );
       
       for (const card of generatedCards) {
-        await addFlashcard(sessionId, { front: card.front, back: card.back });
+        await addFlashcard(sessionId, { front: card.front, back: card.back, mastered: false });
         onFlashcardAdded({
           id: `fc_${Date.now()}_${Math.random()}`,
           front: card.front,
@@ -312,7 +312,8 @@ export function FlashcardComponent({
         </div>
       )}
       
-      <style jsx>{`
+      <style>
+        {`
         .perspective-1000 {
           perspective: 1000px;
         }
@@ -328,7 +329,8 @@ export function FlashcardComponent({
         .rotate-y-180 {
           transform: rotateY(180deg);
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 }
