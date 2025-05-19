@@ -1,0 +1,268 @@
+
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { ChatMessage, FileItem } from "@/types/session";
+import { getChatMessages, addChatMessage, addFileToSession, generateContentWithGemini } from "@/services/sessionService";
+import { MessageSquare, Send, Upload, Plus } from "lucide-react";
+
+interface ChatComponentProps {
+  sessionId: string;
+  onFileUploaded: (file: FileItem) => void;
+}
+
+export function ChatComponent({ sessionId, onFileUploaded }: ChatComponentProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [responding, setResponding] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const loadMessages = async () => {
+      setLoading(true);
+      try {
+        const chatMessages = await getChatMessages(sessionId);
+        setMessages(chatMessages);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load chat messages",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMessages();
+  }, [sessionId, toast]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    try {
+      // Add user message to the chat
+      const userMessage = await addChatMessage(sessionId, {
+        role: "user",
+        content: inputMessage,
+      });
+      
+      setMessages([...messages, userMessage]);
+      setInputMessage("");
+      setResponding(true);
+      
+      // Generate AI response
+      const response = await generateContentWithGemini(inputMessage, "chat", sessionId);
+      
+      // Add AI response to the chat
+      const aiMessage = await addChatMessage(sessionId, {
+        role: "assistant",
+        content: response,
+      });
+      
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      });
+    } finally {
+      setResponding(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    
+    if (file.type !== "application/pdf") {
+      toast({
+        title: "Error",
+        description: "Only PDF files are supported",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // In a real app, we would upload to a storage service
+      // Here we're just simulating the upload
+      const newFile: FileItem = {
+        id: `file_${Date.now()}`,
+        name: file.name,
+        url: URL.createObjectURL(file), // In real app, this would be the cloud storage URL
+        type: file.type,
+        uploadedAt: new Date().toISOString()
+      };
+      
+      await addFileToSession(sessionId, newFile);
+      onFileUploaded(newFile);
+      
+      // Add a message about the file
+      const userMessage = await addChatMessage(sessionId, {
+        role: "user",
+        content: `I've uploaded a file: ${file.name}`,
+      });
+      
+      setMessages([...messages, userMessage]);
+      
+      // Get AI response about the file
+      setResponding(true);
+      const response = await generateContentWithGemini(
+        `I've uploaded a new PDF file called ${file.name}. Can you help me use this for studying?`,
+        "chat",
+        sessionId
+      );
+      
+      const aiMessage = await addChatMessage(sessionId, {
+        role: "assistant",
+        content: response,
+      });
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+      toast({
+        title: "File uploaded",
+        description: `${file.name} has been uploaded successfully`
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload file",
+        variant: "destructive",
+      });
+    } finally {
+      setResponding(false);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-semibold mb-1">AI Study Assistant</h2>
+          <p className="text-gray-600">
+            Chat with our AI to get help with your study materials
+          </p>
+        </div>
+        <div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".pdf"
+            onChange={handleFileUpload}
+          />
+          <Button 
+            variant="outline"
+            className="flex items-center gap-2 border-purple-300 text-purple-600 hover:bg-purple-50"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-4 w-4" />
+            Upload PDF
+          </Button>
+        </div>
+      </div>
+      
+      <Card className="border mb-4">
+        <div className="h-[500px] flex flex-col">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {loading ? (
+              <div className="flex justify-center items-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-purple-500"></div>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <div 
+                  key={message.id} 
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div 
+                    className={`max-w-[80%] p-3 rounded-lg ${
+                      message.role === 'user' 
+                        ? 'bg-purple-600 text-white rounded-tr-none' 
+                        : 'bg-gray-100 text-gray-800 rounded-tl-none'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <p 
+                      className={`text-xs mt-1 ${
+                        message.role === 'user' ? 'text-purple-200' : 'text-gray-500'
+                      }`}
+                    >
+                      {formatTime(message.timestamp)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+            {responding && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 text-gray-800 p-3 rounded-lg rounded-tl-none max-w-[80%]">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
+                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: "0.2s" }}></div>
+                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: "0.4s" }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          
+          <div className="border-t p-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ask a question about your study materials..."
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !responding) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={responding}
+              />
+              <Button 
+                className="gradient-bg"
+                onClick={handleSendMessage}
+                disabled={!inputMessage.trim() || responding}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+      
+      <div className="text-sm text-gray-500 text-center">
+        <p>The AI can help you understand concepts, generate study materials, and answer questions about your uploaded PDFs.</p>
+      </div>
+    </div>
+  );
+}

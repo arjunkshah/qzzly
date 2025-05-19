@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const CTASection = () => {
   return (
@@ -19,8 +20,10 @@ const CTASection = () => {
               Join thousands of students who are studying smarter, not harder. Try Quiz.io today and see the difference.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-5">
-              <Button size="lg" className="bg-white text-purple-600 hover:bg-purple-50 px-10 py-7 text-lg font-bold rounded-xl">
-                Get Started Free
+              <Button size="lg" className="bg-white text-purple-600 hover:bg-purple-50 px-10 py-7 text-lg font-bold rounded-xl" asChild>
+                <Link to="/sessions">
+                  Get Started Free
+                </Link>
               </Button>
               <Button size="lg" variant="outline" className="bg-transparent text-white border-2 border-white px-10 py-7 hover:bg-white/10 text-lg font-bold rounded-xl">
                 <Play className="w-5 h-5 mr-2" /> Watch Demo
