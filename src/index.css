@@ -90,13 +90,18 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    letter-spacing: -0.025em;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 }
 
 @layer components {
   .gradient-bg {
-    @apply bg-gradient-to-r from-purple-600 to-indigo-600;
+    @apply bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300;
   }
   
   .gradient-text {
@@ -104,10 +109,34 @@
   }
   
   .feature-icon {
-    @apply w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white mb-4;
+    @apply w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white mb-6 shadow-lg shadow-purple-200;
   }
 
   .upload-area {
-    @apply border-2 border-dashed border-gray-300 hover:border-purple-400 transition-colors;
+    @apply border-2 border-dashed border-gray-300 hover:border-purple-400 transition-colors duration-300 bg-gray-50 hover:bg-gray-100;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+  }
+
+  .testimonial-card {
+    @apply bg-white p-6 rounded-xl shadow-md transition-all duration-300 hover:shadow-xl;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
   }
 }
