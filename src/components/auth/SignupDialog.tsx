@@ -39,9 +39,10 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 interface SignupDialogProps {
   children?: React.ReactNode;
+  redirectPath?: string;
 }
 
-export function SignupDialog({ children }: SignupDialogProps) {
+export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { signup, isLoading } = useAuth();
   const { toast } = useToast();
@@ -65,7 +66,7 @@ export function SignupDialog({ children }: SignupDialogProps) {
         description: "Welcome to Quiz.io",
       });
       setIsOpen(false);
-      navigate("/sessions");
+      navigate(redirectPath);
     } else {
       toast({
         title: "Signup failed",
