@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,7 +43,9 @@ export function FlashcardComponent({
 
     try {
       const newFlashcard = await addFlashcard(sessionId, { front, back, mastered: false });
-      onFlashcardAdded(newFlashcard);
+      // Here's the fix - we need to properly extract the flashcard from the returned session
+      const addedFlashcard = newFlashcard.flashcards[newFlashcard.flashcards.length - 1];
+      onFlashcardAdded(addedFlashcard);
       
       setFront("");
       setBack("");
@@ -104,13 +105,15 @@ export function FlashcardComponent({
       );
       
       for (const card of generatedCards) {
-        const newCard = await addFlashcard(sessionId, { 
+        const newCardResult = await addFlashcard(sessionId, { 
           front: card.front, 
           back: card.back, 
           mastered: false 
         });
         
-        onFlashcardAdded(newCard);
+        // Fix here too - extract the latest flashcard from the session
+        const addedFlashcard = newCardResult.flashcards[newCardResult.flashcards.length - 1];
+        onFlashcardAdded(addedFlashcard);
       }
       
       toast({

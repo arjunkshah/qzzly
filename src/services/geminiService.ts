@@ -23,7 +23,10 @@ export async function generateWithGemini(
   console.log("Prompt to Gemini:", prompt);
   
   try {
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent", {
+    // Log the API key (first few characters) to help debug
+    console.log("Using API key starting with:", GEMINI_API_KEY.substring(0, 5) + "...");
+    
+    const response = await fetch("https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -41,9 +44,23 @@ export async function generateWithGemini(
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: { message: errorText } };
+      }
+      
       console.error("Gemini API error:", errorData);
-      throw new Error(`API Error: ${errorData.error?.message || "Unknown error"}`);
+      console.error("Response status:", response.status);
+      
+      // Special handling for 401 errors
+      if (response.status === 401) {
+        throw new Error("Authentication failed: API key may be invalid or expired");
+      }
+      
+      throw new Error(`API Error: ${errorData.error?.message || response.statusText || "Unknown error"}`);
     }
     
     const data = await response.json();
@@ -66,9 +83,7 @@ export async function generateFlashcards(material: string, count: number = 5): P
   
   try {
     const prompt = `Generate ${count} flashcards based on the following study material. 
-    Format the response as a JSON array where each object has 'front' and 'back' fields. 
-    The front should be a question or concept and the back should be the explanation or answer.
-    Make sure to return ONLY a valid JSON array with no additional text.
+    Format each flashcard as a JSON object with 'front' and 'back' fields. The front should be a question and the back should be the answer.
     
     Study Material: ${material}`;
     
