@@ -1,6 +1,6 @@
-
 import { StudySession, FileItem, Flashcard, Quiz, ChatMessage } from "@/types/session";
 import { toast } from "@/hooks/use-toast";
+import { generateWithGemini, generateFlashcards, generateQuiz } from "./geminiService";
 
 // Mock data for study sessions
 const mockSessions: StudySession[] = [
@@ -388,46 +388,33 @@ export const addQuiz = (sessionId: string, quiz: Omit<Quiz, 'id'>): Promise<Stud
   });
 };
 
-// Simulate Gemini API integration
+// Use Gemini API to generate content
 export const generateContentWithGemini = async (
   prompt: string, 
   type: 'flashcards' | 'quiz' | 'chat',
   sessionId?: string
 ): Promise<any> => {
-  // In a real implementation, this would call the Gemini API
   console.log(`Generating ${type} with prompt: ${prompt}`);
   
-  return new Promise((resolve) => {
-    // Simulate API delay
-    setTimeout(() => {
-      if (type === 'flashcards') {
-        resolve([
-          { front: "What is photosynthesis?", back: "The process by which green plants and some other organisms use sunlight to synthesize nutrients from carbon dioxide and water." },
-          { front: "What are the main parts of a plant cell?", back: "Cell wall, cell membrane, cytoplasm, nucleus, vacuoles, mitochondria, chloroplasts, endoplasmic reticulum, and Golgi apparatus." },
-          { front: "What is osmosis?", back: "The process by which molecules of a solvent tend to pass through a semipermeable membrane from a less concentrated solution into a more concentrated one." }
-        ]);
-      } else if (type === 'quiz') {
-        resolve({
-          title: "Generated Quiz",
-          questions: [
-            {
-              text: "What is the primary function of chloroplasts in plant cells?",
-              options: ["Cell division", "Protein synthesis", "Photosynthesis", "Respiration"],
-              correctAnswer: 2,
-              explanation: "Chloroplasts are the site of photosynthesis in plant cells."
-            },
-            {
-              text: "Which of the following is NOT a stage of mitosis?",
-              options: ["Prophase", "Metaphase", "Synthesis", "Telophase"],
-              correctAnswer: 2,
-              explanation: "Synthesis (S phase) is part of interphase, not mitosis."
-            }
-          ]
-        });
-      } else {
-        // Chat response
-        resolve("Based on the material you've uploaded, I can see that this topic covers cellular respiration. The main stages are glycolysis, the Krebs cycle, and the electron transport chain. Each of these stages plays a crucial role in converting glucose into ATP, which is the energy currency of the cell.");
-      }
-    }, 1500);
-  });
+  try {
+    if (type === 'flashcards') {
+      const flashcards = await generateFlashcards(prompt);
+      return flashcards;
+    } else if (type === 'quiz') {
+      const quiz = await generateQuiz(prompt);
+      return quiz;
+    } else {
+      // For chat, use the general text generation
+      const response = await generateWithGemini(prompt, {
+        temperature: 0.7,
+        maxOutputTokens: 1000
+      });
+      return response;
+    }
+  } catch (error) {
+    console.error("Error generating content with Gemini:", error);
+    return type === 'chat' 
+      ? "I'm sorry, I encountered an error processing your request. Please try again."
+      : [];
+  }
 };

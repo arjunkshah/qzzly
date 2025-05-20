@@ -23,6 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').optional(),
@@ -44,6 +45,7 @@ export function SignupDialog({ children }: SignupDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { signup, isLoading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -63,6 +65,7 @@ export function SignupDialog({ children }: SignupDialogProps) {
         description: "Welcome to Quiz.io",
       });
       setIsOpen(false);
+      navigate("/sessions");
     } else {
       toast({
         title: "Signup failed",

@@ -23,6 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -39,6 +40,7 @@ export function LoginDialog({ children }: LoginDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { login, isLoading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -56,6 +58,7 @@ export function LoginDialog({ children }: LoginDialogProps) {
         description: "Welcome back to Quiz.io",
       });
       setIsOpen(false);
+      navigate("/sessions");
     } else {
       toast({
         title: "Login failed",
