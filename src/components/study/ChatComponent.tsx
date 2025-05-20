@@ -53,27 +53,46 @@ export function ChatComponent({ sessionId, onFileUploaded }: ChatComponentProps)
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
+    const userMessageContent = inputMessage;
+    setInputMessage("");
+    
     try {
       // Add user message to the chat
       const userMessage = await addChatMessage(sessionId, {
         role: "user",
-        content: inputMessage,
+        content: userMessageContent,
       });
       
-      setMessages([...messages, userMessage]);
-      setInputMessage("");
+      setMessages(prevMessages => [...prevMessages, userMessage]);
       setResponding(true);
       
-      // Generate AI response
-      const response = await generateContentWithGemini(inputMessage, "chat", sessionId);
-      
-      // Add AI response to the chat
-      const aiMessage = await addChatMessage(sessionId, {
-        role: "assistant",
-        content: response,
-      });
-      
-      setMessages(prev => [...prev, aiMessage]);
+      try {
+        // Generate AI response
+        const response = await generateContentWithGemini(userMessageContent, "chat", sessionId);
+        
+        // Add AI response to the chat
+        const aiMessage = await addChatMessage(sessionId, {
+          role: "assistant",
+          content: response,
+        });
+        
+        setMessages(prev => [...prev, aiMessage]);
+      } catch (error) {
+        console.error("Error generating response:", error);
+        // Add error message to chat
+        const errorMessage = await addChatMessage(sessionId, {
+          role: "assistant",
+          content: "I'm sorry, I encountered an error processing your request. Please try again.",
+        });
+        
+        setMessages(prev => [...prev, errorMessage]);
+        
+        toast({
+          title: "Error",
+          description: "Failed to generate a response",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -129,22 +148,32 @@ export function ChatComponent({ sessionId, onFileUploaded }: ChatComponentProps)
           content: fileMessage,
         });
         
-        setMessages([...messages, userMessage]);
+        setMessages(prevMessages => [...prevMessages, userMessage]);
         
         // Get AI response about the files
         setResponding(true);
-        const response = await generateContentWithGemini(
-          `I've uploaded ${uploadedFileNames.length > 1 ? 'new PDF files' : 'a new PDF file'} called ${uploadedFileNames.join(", ")}. Can you help me use ${uploadedFileNames.length > 1 ? 'these' : 'this'} for studying?`,
-          "chat",
-          sessionId
-        );
         
-        const aiMessage = await addChatMessage(sessionId, {
-          role: "assistant",
-          content: response,
-        });
-        
-        setMessages(prev => [...prev, aiMessage]);
+        try {
+          const promptAboutFiles = `I've uploaded ${uploadedFileNames.length > 1 ? 'new PDF files' : 'a new PDF file'} called ${uploadedFileNames.join(", ")}. Can you help me use ${uploadedFileNames.length > 1 ? 'these' : 'this'} for studying?`;
+          
+          const response = await generateContentWithGemini(promptAboutFiles, "chat", sessionId);
+          
+          const aiMessage = await addChatMessage(sessionId, {
+            role: "assistant",
+            content: response,
+          });
+          
+          setMessages(prev => [...prev, aiMessage]);
+        } catch (error) {
+          console.error("Error generating response about files:", error);
+          // Add error message to chat
+          const errorMessage = await addChatMessage(sessionId, {
+            role: "assistant",
+            content: "I'm sorry, I encountered an error processing your uploaded files. Please try asking a specific question about the content.",
+          });
+          
+          setMessages(prev => [...prev, errorMessage]);
+        }
         
         toast({
           title: "Files uploaded",
@@ -206,6 +235,14 @@ export function ChatComponent({ sessionId, onFileUploaded }: ChatComponentProps)
             {loading ? (
               <div className="flex justify-center items-center h-full">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-purple-500"></div>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                <MessageSquare className="h-12 w-12 text-purple-300 mb-2" />
+                <h3 className="text-lg font-medium text-gray-700">Your AI Study Assistant</h3>
+                <p className="text-gray-500 mt-2 max-w-sm">
+                  Ask questions about your study materials or upload PDFs to get help with your studies.
+                </p>
               </div>
             ) : (
               messages.map((message) => (

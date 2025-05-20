@@ -413,8 +413,50 @@ export const generateContentWithGemini = async (
     }
   } catch (error) {
     console.error("Error generating content with Gemini:", error);
-    return type === 'chat' 
-      ? "I'm sorry, I encountered an error processing your request. Please try again."
-      : [];
+    toast({
+      title: "API Error",
+      description: error instanceof Error ? error.message : "Failed to generate content. Please try again.",
+      variant: "destructive",
+    });
+    
+    // Return fallback content only when the API completely fails
+    if (type === 'chat') {
+      return "I'm sorry, I encountered an error processing your request. Please try again.";
+    } else if (type === 'flashcards') {
+      // Return a few basic fallback flashcards
+      return [
+        {
+          front: "What is an API?",
+          back: "Application Programming Interface: a set of rules that allows one software application to interact with another.",
+          mastered: false
+        },
+        {
+          front: "What is a REST API?",
+          back: "Representational State Transfer API: an architectural style for designing networked applications that uses HTTP methods to access and manipulate data.",
+          mastered: false
+        }
+      ];
+    } else {
+      // Return a basic fallback quiz
+      return {
+        title: "API Basics Quiz",
+        questions: [
+          {
+            id: "q1",
+            text: "What does API stand for?",
+            options: ["Application Programming Interface", "Advanced Programming Integration", "Application Process Integration", "Automated Program Interface"],
+            correctAnswer: 0,
+            explanation: "API stands for Application Programming Interface, which defines interactions between multiple software applications."
+          },
+          {
+            id: "q2",
+            text: "Which HTTP method is typically used to retrieve data from a server?",
+            options: ["POST", "GET", "PUT", "DELETE"],
+            correctAnswer: 1,
+            explanation: "GET requests are used to retrieve data from a specified resource without modifying it."
+          }
+        ]
+      };
+    }
   }
 };

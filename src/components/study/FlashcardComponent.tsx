@@ -44,12 +44,7 @@ export function FlashcardComponent({
 
     try {
       const newFlashcard = await addFlashcard(sessionId, { front, back, mastered: false });
-      onFlashcardAdded({
-        id: `fc_${Date.now()}`,
-        front,
-        back,
-        mastered: false
-      });
+      onFlashcardAdded(newFlashcard);
       
       setFront("");
       setBack("");
@@ -94,20 +89,28 @@ export function FlashcardComponent({
   const handleGenerateFlashcards = async () => {
     setAiGenerating(true);
     try {
+      let topic = "cellular biology";
+      
+      // If there are flashcards, use their topics to generate more relevant ones
+      if (flashcards.length > 0) {
+        const existingTopics = flashcards.map(fc => fc.front).join(", ");
+        topic = `topics similar to these: ${existingTopics.substring(0, 300)}`;
+      }
+      
       const generatedCards = await generateContentWithGemini(
-        "Generate 3 flashcards about cellular biology",
+        `Generate 5 educational flashcards about ${topic}. Make them clear and concise.`,
         "flashcards",
         sessionId
       );
       
       for (const card of generatedCards) {
-        await addFlashcard(sessionId, { front: card.front, back: card.back, mastered: false });
-        onFlashcardAdded({
-          id: `fc_${Date.now()}_${Math.random()}`,
-          front: card.front,
-          back: card.back,
-          mastered: false
+        const newCard = await addFlashcard(sessionId, { 
+          front: card.front, 
+          back: card.back, 
+          mastered: false 
         });
+        
+        onFlashcardAdded(newCard);
       }
       
       toast({
@@ -115,9 +118,10 @@ export function FlashcardComponent({
         description: `${generatedCards.length} flashcards generated`
       });
     } catch (error) {
+      console.error("Error generating flashcards:", error);
       toast({
         title: "Error",
-        description: "Failed to generate flashcards",
+        description: error instanceof Error ? error.message : "Failed to generate flashcards",
         variant: "destructive",
       });
     } finally {
