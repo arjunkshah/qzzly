@@ -26,7 +26,8 @@ export async function generateWithGemini(
     // Log the API key (first few characters) to help debug
     console.log("Using API key starting with:", GEMINI_API_KEY.substring(0, 5) + "...");
     
-    const response = await fetch("https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent", {
+    // Fix: Use the v1beta endpoint which supports gemini-pro
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
