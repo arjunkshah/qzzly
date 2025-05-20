@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FileItem } from "@/types/session";
 import { addFileToSession } from "@/services/sessionService";
 import { useToast } from "@/hooks/use-toast";
-import { File, Upload, Download, Trash, X } from "lucide-react";
+import { File, Upload, Download, Trash } from "lucide-react";
 
 interface FilesComponentProps {
   sessionId: string;
@@ -29,10 +29,11 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
   };
 
   const handleFileUpload = async (fileList: FileList) => {
+    if (fileList.length === 0) return;
+    
     setUploading(true);
     try {
-      // In a real app, we would upload to a storage service
-      // Here we're just simulating the upload
+      // Process each file
       for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
         
@@ -69,6 +70,10 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
       });
     } finally {
       setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -95,8 +100,8 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
         
         {/* File upload area */}
         <div
-          className={`upload-area rounded-lg p-8 text-center cursor-pointer mb-6 ${
-            isDragging ? "border-purple-500 bg-purple-50" : ""
+          className={`upload-area rounded-lg p-8 text-center cursor-pointer mb-6 border-2 border-dashed ${
+            isDragging ? "border-purple-500 bg-purple-50" : "border-gray-300"
           }`}
           onDragOver={(e) => {
             e.preventDefault();

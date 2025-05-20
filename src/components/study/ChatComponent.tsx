@@ -88,62 +88,73 @@ export function ChatComponent({ sessionId, onFileUploaded }: ChatComponentProps)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
-    const file = e.target.files[0];
-    
-    if (file.type !== "application/pdf") {
-      toast({
-        title: "Error",
-        description: "Only PDF files are supported",
-        variant: "destructive",
-      });
-      return;
-    }
+    const files = Array.from(e.target.files);
+    const uploadedFileNames: string[] = [];
     
     try {
-      // In a real app, we would upload to a storage service
-      // Here we're just simulating the upload
-      const newFile: FileItem = {
-        id: `file_${Date.now()}`,
-        name: file.name,
-        url: URL.createObjectURL(file), // In real app, this would be the cloud storage URL
-        type: file.type,
-        uploadedAt: new Date().toISOString()
-      };
+      // Process each file
+      for (const file of files) {
+        if (file.type !== "application/pdf") {
+          toast({
+            title: "Error",
+            description: "Only PDF files are supported",
+            variant: "destructive",
+          });
+          continue;
+        }
+        
+        // In a real app, we would upload to a storage service
+        // Here we're just simulating the upload
+        const newFile: FileItem = {
+          id: `file_${Date.now()}_${file.name}`,
+          name: file.name,
+          url: URL.createObjectURL(file), // In real app, this would be the cloud storage URL
+          type: file.type,
+          uploadedAt: new Date().toISOString()
+        };
+        
+        await addFileToSession(sessionId, newFile);
+        onFileUploaded(newFile);
+        uploadedFileNames.push(file.name);
+      }
       
-      await addFileToSession(sessionId, newFile);
-      onFileUploaded(newFile);
-      
-      // Add a message about the file
-      const userMessage = await addChatMessage(sessionId, {
-        role: "user",
-        content: `I've uploaded a file: ${file.name}`,
-      });
-      
-      setMessages([...messages, userMessage]);
-      
-      // Get AI response about the file
-      setResponding(true);
-      const response = await generateContentWithGemini(
-        `I've uploaded a new PDF file called ${file.name}. Can you help me use this for studying?`,
-        "chat",
-        sessionId
-      );
-      
-      const aiMessage = await addChatMessage(sessionId, {
-        role: "assistant",
-        content: response,
-      });
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-      toast({
-        title: "File uploaded",
-        description: `${file.name} has been uploaded successfully`
-      });
+      if (uploadedFileNames.length > 0) {
+        // Add a message about the files
+        const fileMessage = uploadedFileNames.length === 1 
+          ? `I've uploaded a file: ${uploadedFileNames[0]}`
+          : `I've uploaded ${uploadedFileNames.length} files: ${uploadedFileNames.join(", ")}`;
+        
+        const userMessage = await addChatMessage(sessionId, {
+          role: "user",
+          content: fileMessage,
+        });
+        
+        setMessages([...messages, userMessage]);
+        
+        // Get AI response about the files
+        setResponding(true);
+        const response = await generateContentWithGemini(
+          `I've uploaded ${uploadedFileNames.length > 1 ? 'new PDF files' : 'a new PDF file'} called ${uploadedFileNames.join(", ")}. Can you help me use ${uploadedFileNames.length > 1 ? 'these' : 'this'} for studying?`,
+          "chat",
+          sessionId
+        );
+        
+        const aiMessage = await addChatMessage(sessionId, {
+          role: "assistant",
+          content: response,
+        });
+        
+        setMessages(prev => [...prev, aiMessage]);
+        
+        toast({
+          title: "Files uploaded",
+          description: `${uploadedFileNames.length} file(s) have been uploaded successfully`
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to upload file",
+        description: "Failed to upload file(s)",
         variant: "destructive",
       });
     } finally {
@@ -175,6 +186,7 @@ export function ChatComponent({ sessionId, onFileUploaded }: ChatComponentProps)
             ref={fileInputRef}
             className="hidden"
             accept=".pdf"
+            multiple
             onChange={handleFileUpload}
           />
           <Button 
@@ -183,7 +195,7 @@ export function ChatComponent({ sessionId, onFileUploaded }: ChatComponentProps)
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="h-4 w-4" />
-            Upload PDF
+            Upload PDFs
           </Button>
         </div>
       </div>

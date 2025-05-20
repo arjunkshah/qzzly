@@ -28,36 +28,39 @@ const HeroSection = () => {
     
     if (!files || files.length === 0) return;
     
-    const file = files[0];
-    
-    if (file.type !== "application/pdf") {
-      toast({
-        title: "Unsupported file format",
-        description: "Please upload a PDF file",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setUploading(true);
     
     try {
-      // Create a new study session with the uploaded file
+      // Get the first file for the session title
+      const firstFile = files[0];
+      
+      if (firstFile.type !== "application/pdf") {
+        toast({
+          title: "Unsupported file format",
+          description: "Please upload PDF files only",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Create a new study session with all uploaded files
+      const fileItems = Array.from(files).map((file, index) => ({
+        id: `file_${Date.now()}_${index}`,
+        name: file.name,
+        url: URL.createObjectURL(file), // In a real app, this would be a cloud storage URL
+        type: file.type,
+        uploadedAt: new Date().toISOString()
+      }));
+      
       const newSession = await createSession({
-        title: file.name.replace(/\.pdf$/, ''),
-        description: "Created from homepage upload",
-        files: [{
-          id: `file_${Date.now()}`,
-          name: file.name,
-          url: URL.createObjectURL(file), // In a real app, this would be a cloud storage URL
-          type: file.type,
-          uploadedAt: new Date().toISOString()
-        }]
+        title: firstFile.name.replace(/\.pdf$/, ''),
+        description: `Created from homepage upload (${files.length} file${files.length > 1 ? 's' : ''})`,
+        files: fileItems
       });
       
       toast({
-        title: "File uploaded successfully",
-        description: "Your study session has been created"
+        title: "Files uploaded successfully",
+        description: `Created new study session with ${files.length} file${files.length > 1 ? 's' : ''}`
       });
       
       // Navigate to the new session
@@ -65,7 +68,7 @@ const HeroSection = () => {
     } catch (error) {
       toast({
         title: "Upload failed",
-        description: "There was an error uploading your file",
+        description: "There was an error uploading your files",
         variant: "destructive"
       });
     } finally {
@@ -145,7 +148,7 @@ const HeroSection = () => {
               {uploading ? (
                 <div className="flex flex-col items-center">
                   <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-purple-500 mb-4"></div>
-                  <p className="text-gray-600">Uploading your file...</p>
+                  <p className="text-gray-600">Uploading your files...</p>
                 </div>
               ) : (
                 <>
@@ -167,7 +170,8 @@ const HeroSection = () => {
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept=".pdf,.doc,.docx"
+                accept=".pdf"
+                multiple
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     handleFileUpload(e.target.files);
@@ -176,7 +180,7 @@ const HeroSection = () => {
               />
             </div>
             <p className="text-sm text-gray-500 text-center">
-              Supported formats: PDF, DOC, DOCX (Max size: 25MB)
+              Supported formats: PDF (Max size: 25MB per file)
             </p>
           </div>
         </div>

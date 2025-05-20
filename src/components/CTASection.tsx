@@ -31,7 +31,7 @@ const CTASection = () => {
                   </Link>
                 </Button>
               ) : (
-                <SignupDialog>
+                <SignupDialog redirectPath="/sessions">
                   <Button size="lg" className="bg-white text-purple-600 hover:bg-purple-50 px-10 py-7 text-lg font-bold rounded-xl">
                     Get Started Free
                   </Button>
