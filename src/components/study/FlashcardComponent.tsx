@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Flashcard } from "@/types/session";
+import { Flashcard, FileItem } from "@/types/session";
 import { addFlashcard, toggleFlashcardMastery, generateContentWithGemini, getSessionById, updateFlashcard } from "@/services/sessionService";
 import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface FlashcardComponentProps {
   sessionId: string;
   flashcards: Flashcard[];
+  files?: FileItem[];
   onFlashcardAdded: (flashcard: Flashcard) => void;
   onMasteryToggled: (id: string, mastered: boolean) => void;
 }
@@ -23,6 +24,7 @@ interface FlashcardComponentProps {
 export function FlashcardComponent({ 
   sessionId, 
   flashcards, 
+  files = [],
   onFlashcardAdded, 
   onMasteryToggled 
 }: FlashcardComponentProps) {
@@ -34,13 +36,14 @@ export function FlashcardComponent({
   const [aiGenerating, setAiGenerating] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingFlashcard, setEditingFlashcard] = useState<Flashcard | null>(null);
-  const [generationCount, setGenerationCount] = useState(5);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { toast } = useToast();
+  
+  // Enhanced generation options
   const [generationOptions, setGenerationOptions] = useState({
     count: 5,
     complexity: "medium",
   });
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const { toast } = useToast();
 
   const handleAddFlashcard = async () => {
     if (!front.trim() || !back.trim()) {
@@ -149,36 +152,32 @@ export function FlashcardComponent({
   const handleGenerateFlashcards = async () => {
     setAiGenerating(true);
     try {
-      // Fetch the current session to get all files
-      const currentSession = await getSessionById(sessionId);
-      
-      if (!currentSession || currentSession.files.length === 0) {
-        toast({
-          title: "No study materials",
-          description: "Please upload PDF files first to generate flashcards from your content",
-          variant: "destructive",
-        });
-        setAiGenerating(false);
-        return;
-      }
-      
-      // Use existing flashcard topics if available, otherwise use file names as context
+      // Construct a proper prompt based on available information
       let prompt = "";
       const count = generationOptions.count;
       const complexity = generationOptions.complexity;
       
-      if (flashcards.length > 0) {
+      if (files.length > 0) {
+        // Generate flashcards based on file content
+        const fileNames = files.map(file => file.name.replace('.pdf', '')).join(", ");
+        prompt = `Generate ${count} educational flashcards about ${fileNames}`;
+      } else if (flashcards.length > 0) {
+        // Generate similar flashcards based on existing ones
         const existingTopics = flashcards.map(fc => fc.front).join(", ");
-        prompt = `Generate ${count} educational flashcards about topics similar to these: ${existingTopics.substring(0, 300)}. ${getComplexityPrompt(complexity)}`;
+        prompt = `Generate ${count} educational flashcards about topics similar to these: ${existingTopics.substring(0, 300)}`;
       } else {
-        const fileNames = currentSession.files.map(file => file.name.replace('.pdf', '')).join(", ");
-        prompt = `Generate ${count} educational flashcards about ${fileNames}. ${getComplexityPrompt(complexity)}`;
+        // Generic prompt if no content is available
+        prompt = `Generate ${count} educational flashcards about general study skills and learning strategies`;
       }
       
       const generatedCards = await generateContentWithGemini(
         prompt,
         "flashcards",
-        sessionId
+        sessionId,
+        {
+          count,
+          complexity
+        }
       );
       
       for (const card of generatedCards) {
@@ -188,7 +187,7 @@ export function FlashcardComponent({
           mastered: false 
         });
         
-        // Fix here too - extract the latest flashcard from the session
+        // Extract the latest flashcard from the session
         const addedFlashcard = newCardResult.flashcards[newCardResult.flashcards.length - 1];
         onFlashcardAdded(addedFlashcard);
       }

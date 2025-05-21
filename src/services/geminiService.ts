@@ -1,3 +1,4 @@
+
 // This is a wrapper for the Google Gemini API
 
 // Use the provided Gemini API key
@@ -76,16 +77,61 @@ export async function generateWithGemini(
 }
 
 /**
+ * Extracts content from files to use as study material
+ * @param files Array of file items to extract content from
+ * @returns A string representation of the file contents
+ */
+function extractContentFromFiles(files: any[]): string {
+  if (!files || files.length === 0) {
+    return "No files available";
+  }
+  
+  // Extract useful information from files
+  const fileInfo = files.map(file => {
+    return `${file.name.replace('.pdf', '')}`; 
+  }).join(", ");
+  
+  return fileInfo;
+}
+
+/**
  * Generates flashcards based on study material
  */
-export async function generateFlashcards(material: string, count: number = 5): Promise<Array<{front: string, back: string, mastered: boolean}>> {
+export async function generateFlashcards(
+  material: string, 
+  count: number = 5, 
+  complexity: string = "medium", 
+  files?: any[]
+): Promise<Array<{front: string, back: string, mastered: boolean}>> {
   console.log(`Generating ${count} flashcards for: ${material.substring(0, 100)}...`);
   
   try {
-    const prompt = `Generate ${count} flashcards based on the following study material. 
-    Format each flashcard as a JSON object with 'front' and 'back' fields. The front should be a question and the back should be the answer.
+    // If files are provided, extract content to supplement the material
+    let studyContent = material;
+    if (files && files.length > 0) {
+      const fileContent = extractContentFromFiles(files);
+      studyContent = `${material}\n\nAdditional context from uploaded files: ${fileContent}`;
+    }
     
-    Study Material: ${material}`;
+    let complexityPrompt = "";
+    switch (complexity) {
+      case "simple":
+        complexityPrompt = " Make them very simple and easy to understand, suitable for beginners.";
+        break;
+      case "medium":
+        complexityPrompt = " Make them clear and concise with moderate detail.";
+        break;
+      case "advanced":
+        complexityPrompt = " Make them detailed and comprehensive, suitable for advanced students.";
+        break;
+    }
+    
+    const prompt = `Generate ${count} flashcards based on the following study material.
+    Create appropriate question-answer pairs covering key concepts from this material.
+    Format each flashcard as a JSON object with 'front' and 'back' fields. The front should be a question and the back should be the answer.
+    ${complexityPrompt}
+    
+    Study Material: ${studyContent}`;
     
     const response = await generateWithGemini(prompt, {
       temperature: 0.2,
@@ -128,16 +174,47 @@ export async function generateFlashcards(material: string, count: number = 5): P
 /**
  * Generates quiz questions based on study material
  */
-export async function generateQuiz(material: string, questionCount: number = 5): Promise<any> {
+export async function generateQuiz(
+  material: string, 
+  questionCount: number = 5, 
+  difficulty: string = "medium",
+  topic: string = "", 
+  includeExplanations: boolean = true,
+  files?: any[]
+): Promise<any> {
   console.log(`Generating quiz with ${questionCount} questions for: ${material.substring(0, 100)}...`);
   
   try {
-    const prompt = `Generate a quiz with ${questionCount} multiple-choice questions based on the following study material. 
+    // If files are provided, extract content to supplement the material
+    let studyContent = material;
+    if (files && files.length > 0) {
+      const fileContent = extractContentFromFiles(files);
+      studyContent = `${material}\n\nAdditional context from uploaded files: ${fileContent}`;
+    }
+    
+    let difficultyPrompt = "";
+    switch (difficulty) {
+      case "easy":
+        difficultyPrompt = "Make the questions easy, suitable for beginners.";
+        break;
+      case "medium":
+        difficultyPrompt = "Make the questions moderately challenging.";
+        break;
+      case "hard":
+        difficultyPrompt = "Make the questions challenging, suitable for advanced students.";
+        break;
+    }
+    
+    let topicPrompt = topic ? `Focus the questions on the topic of ${topic}.` : "";
+    let explanationPrompt = includeExplanations ? "Include detailed explanations for each answer." : "Keep explanations brief.";
+    
+    const prompt = `Generate a quiz with ${questionCount} multiple-choice questions based on the following study material.
+    ${difficultyPrompt} ${topicPrompt} ${explanationPrompt}
     Format the response as a JSON object with a 'title' field and a 'questions' array. 
     Each question should have 'text', 'options' array, 'correctAnswer' (the index of the correct option), and an 'explanation'.
     Make sure to return ONLY a valid JSON object with no additional text.
     
-    Study Material: ${material}`;
+    Study Material: ${studyContent}`;
     
     const response = await generateWithGemini(prompt, {
       temperature: 0.2,

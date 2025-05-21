@@ -152,18 +152,23 @@ export default function StudySession() {
           
           <div className="bg-white p-6 rounded-lg border shadow-sm">
             <TabsContent value="files">
-              <FilesComponent sessionId={session.id} files={session.files} onFileAdded={(file) => {
-                setSession({
-                  ...session,
-                  files: [...session.files, file]
-                });
-              }} />
+              <FilesComponent 
+                sessionId={session.id} 
+                files={session.files} 
+                onFileAdded={(file) => {
+                  setSession({
+                    ...session,
+                    files: [...session.files, file]
+                  });
+                }} 
+              />
             </TabsContent>
             
             <TabsContent value="flashcards">
               <FlashcardComponent 
                 sessionId={session.id} 
                 flashcards={session.flashcards}
+                files={session.files}
                 onFlashcardAdded={(flashcard) => {
                   setSession({
                     ...session,
@@ -185,6 +190,8 @@ export default function StudySession() {
               <QuizComponent 
                 sessionId={session.id} 
                 quizzes={session.quizzes}
+                files={session.files}
+                flashcards={session.flashcards}
                 onQuizAdded={(quiz) => {
                   setSession({
                     ...session,
@@ -204,6 +211,7 @@ export default function StudySession() {
             <TabsContent value="chat">
               <ChatComponent 
                 sessionId={session.id}
+                files={session.files}
                 onFileUploaded={(file) => {
                   setSession({
                     ...session,

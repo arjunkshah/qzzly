@@ -416,21 +416,46 @@ export const addQuiz = (sessionId: string, quiz: Omit<Quiz, 'id'>): Promise<Stud
 export const generateContentWithGemini = async (
   prompt: string, 
   type: 'flashcards' | 'quiz' | 'chat',
-  sessionId?: string
+  sessionId?: string,
+  options: any = {}
 ): Promise<any> => {
   console.log(`Generating ${type} with prompt: ${prompt}`);
   
   try {
+    // Get session files if sessionId is provided
+    let sessionFiles = [];
+    if (sessionId) {
+      const session = await getSessionById(sessionId);
+      sessionFiles = session?.files || [];
+    }
+    
     if (type === 'flashcards') {
-      // Pass the prompt directly to generateFlashcards to use the user's specified topic
-      const flashcards = await generateFlashcards(prompt);
+      // Extract options
+      const count = options.count || 5;
+      const complexity = options.complexity || "medium";
+      
+      // Pass files to the flashcards generator
+      const flashcards = await generateFlashcards(prompt, count, complexity, sessionFiles);
       return flashcards;
     } else if (type === 'quiz') {
-      const quiz = await generateQuiz(prompt);
+      // Extract options
+      const questionCount = options.questionCount || 5;
+      const difficulty = options.difficulty || "medium";
+      const topic = options.topic || "";
+      const includeExplanations = options.includeExplanations !== false;
+      
+      // Pass files to the quiz generator
+      const quiz = await generateQuiz(prompt, questionCount, difficulty, topic, includeExplanations, sessionFiles);
       return quiz;
     } else {
-      // For chat, use the general text generation
-      const response = await generateWithGemini(prompt, {
+      // For chat, use the general text generation with file context if available
+      let enhancedPrompt = prompt;
+      if (sessionFiles.length > 0) {
+        const fileNames = sessionFiles.map(file => file.name.replace('.pdf', '')).join(", ");
+        enhancedPrompt = `Context: This conversation is about these topics: ${fileNames}.\n\nUser question: ${prompt}`;
+      }
+      
+      const response = await generateWithGemini(enhancedPrompt, {
         temperature: 0.7,
         maxOutputTokens: 1000
       });
@@ -448,37 +473,37 @@ export const generateContentWithGemini = async (
     if (type === 'chat') {
       return "I'm sorry, I encountered an error processing your request. Please try again.";
     } else if (type === 'flashcards') {
-      // Return a few basic fallback flashcards - remove the hardcoded cellular biology reference
+      // Return generic fallback flashcards
       return [
         {
-          front: "What is an API?",
-          back: "Application Programming Interface: a set of rules that allows one software application to interact with another.",
+          front: "What is learning?",
+          back: "The acquisition of knowledge or skills through experience, study, or being taught.",
           mastered: false
         },
         {
-          front: "What is a REST API?",
-          back: "Representational State Transfer API: an architectural style for designing networked applications that uses HTTP methods to access and manipulate data.",
+          front: "What is a study strategy?",
+          back: "A deliberate approach to learning that involves planning, monitoring, and reflection to enhance understanding and retention.",
           mastered: false
         }
       ];
     } else {
       // Return a basic fallback quiz
       return {
-        title: "API Basics Quiz",
+        title: "General Knowledge Quiz",
         questions: [
           {
             id: "q1",
-            text: "What does API stand for?",
-            options: ["Application Programming Interface", "Advanced Programming Integration", "Application Process Integration", "Automated Program Interface"],
+            text: "What is the process of acquiring new knowledge called?",
+            options: ["Learning", "Memorizing", "Thinking", "Analyzing"],
             correctAnswer: 0,
-            explanation: "API stands for Application Programming Interface, which defines interactions between multiple software applications."
+            explanation: "Learning is the process of acquiring new knowledge, behaviors, skills, values, attitudes, or preferences."
           },
           {
             id: "q2",
-            text: "Which HTTP method is typically used to retrieve data from a server?",
-            options: ["POST", "GET", "PUT", "DELETE"],
-            correctAnswer: 1,
-            explanation: "GET requests are used to retrieve data from a specified resource without modifying it."
+            text: "Which technique involves testing yourself on material you've learned?",
+            options: ["Active recall", "Passive reading", "Highlighting", "Note-taking"],
+            correctAnswer: 0,
+            explanation: "Active recall is a learning principle that involves actively stimulating memory during the learning process."
           }
         ]
       };
