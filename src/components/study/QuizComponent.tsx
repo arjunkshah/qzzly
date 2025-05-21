@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Quiz, Question } from "@/types/session";
-import { addQuiz, generateContentWithGemini } from "@/services/sessionService";
-import { Check, Plus, Sparkles } from "lucide-react";
+import { addQuiz, generateContentWithGemini, getSessionById } from "@/services/sessionService";
+import { Check, Plus, Sparkles, Settings } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface QuizComponentProps {
   sessionId: string;
@@ -31,6 +33,13 @@ export function QuizComponent({
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [quizSettings, setQuizSettings] = useState({
+    questionCount: 5,
+    difficulty: "medium",
+    topic: "",
+    showExplanations: true
+  });
   const { toast } = useToast();
 
   const startQuiz = (quiz: Quiz) => {
@@ -73,16 +82,57 @@ export function QuizComponent({
   const handleGenerateQuiz = async () => {
     setAiGenerating(true);
     try {
+      // Get session to check file content
+      const session = await getSessionById(sessionId);
+      
+      if (!session || session.files.length === 0) {
+        toast({
+          title: "No study materials",
+          description: "Please upload PDF files first to generate quiz questions from your content",
+          variant: "destructive",
+        });
+        setAiGenerating(false);
+        return;
+      }
+      
+      // Build prompt based on settings
+      const fileContext = session.files.map(file => file.name.replace('.pdf', '')).join(", ");
+      const topic = quizSettings.topic.trim() 
+        ? quizSettings.topic 
+        : fileContext;
+        
+      let prompt = `Generate a quiz about ${topic} with ${quizSettings.questionCount} questions`;
+      
+      // Add difficulty to prompt
+      switch(quizSettings.difficulty) {
+        case "easy":
+          prompt += " at a beginner level";
+          break;
+        case "medium":
+          prompt += " at an intermediate level";
+          break;
+        case "hard":
+          prompt += " at an advanced level with challenging questions";
+          break;
+      }
+      
+      if (quizSettings.showExplanations) {
+        prompt += " with detailed explanations for each correct answer";
+      }
+      
       const generatedQuiz = await generateContentWithGemini(
-        "Generate a quiz about cell biology with explanations for correct answers",
+        prompt,
         "quiz",
         sessionId
       );
       
+      // Make sure we have the right number of questions (API might return more or less)
+      const limitedQuestions = generatedQuiz.questions.slice(0, quizSettings.questionCount);
+      
       const newQuiz: Quiz = {
         id: `quiz_${Date.now()}`,
         title: generatedQuiz.title,
-        questions: generatedQuiz.questions.map((q: any, index: number) => ({
+        questions: limitedQuestions.map((q: any, index: number) => ({
           id: `q_${Date.now()}_${index}`,
           ...q
         }))
@@ -96,6 +146,7 @@ export function QuizComponent({
         description: "New quiz generated successfully"
       });
     } catch (error) {
+      console.error("Error generating quiz:", error);
       toast({
         title: "Error",
         description: "Failed to generate quiz",
@@ -116,6 +167,91 @@ export function QuizComponent({
           </p>
         </div>
         <div className="flex space-x-3">
+          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Quiz Options
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Quiz Generation Settings</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Number of questions</Label>
+                  <div className="flex items-center space-x-2">
+                    <Slider 
+                      value={[quizSettings.questionCount]} 
+                      min={3} 
+                      max={15} 
+                      step={1}
+                      onValueChange={(vals) => setQuizSettings({...quizSettings, questionCount: vals[0]})}
+                      className="flex-grow"
+                    />
+                    <span className="w-8 text-center font-medium">{quizSettings.questionCount}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Difficulty level</Label>
+                  <Select 
+                    value={quizSettings.difficulty}
+                    onValueChange={(value) => setQuizSettings({...quizSettings, difficulty: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select difficulty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="topic">Specific Topic (optional)</Label>
+                  <Input
+                    id="topic"
+                    placeholder="Leave blank to generate from uploaded files"
+                    value={quizSettings.topic}
+                    onChange={(e) => setQuizSettings({...quizSettings, topic: e.target.value})}
+                  />
+                  <p className="text-xs text-gray-500">
+                    If left blank, quiz will be generated based on your study materials
+                  </p>
+                </div>
+                
+                <div className="flex items-start space-x-2">
+                  <Checkbox 
+                    id="explanations" 
+                    checked={quizSettings.showExplanations}
+                    onCheckedChange={(checked) => 
+                      setQuizSettings({...quizSettings, showExplanations: checked === true})
+                    }
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <Label htmlFor="explanations">
+                      Include answer explanations
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      Show detailed explanations after answering each question
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button onClick={() => setSettingsOpen(false)}>
+                  Save Settings
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
           <Button 
             variant="outline" 
             className="flex items-center gap-2 border-purple-300 text-purple-600 hover:bg-purple-50"
@@ -166,18 +302,27 @@ export function QuizComponent({
               <p className="text-gray-500 mt-1 mb-6">
                 Generate a quiz with AI based on your study materials
               </p>
-              <Button 
-                className="gradient-bg" 
-                onClick={handleGenerateQuiz}
-                disabled={aiGenerating}
-              >
-                {aiGenerating ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                Generate Quiz with AI
-              </Button>
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSettingsOpen(true)}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Quiz Options
+                </Button>
+                <Button 
+                  className="gradient-bg" 
+                  onClick={handleGenerateQuiz}
+                  disabled={aiGenerating}
+                >
+                  {aiGenerating ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Generate Quiz with AI
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -282,7 +427,7 @@ export function QuizComponent({
                     : "Incorrect"}
                 </p>
                 <p className="text-gray-700">
-                  {activeQuiz.questions[currentQuestionIndex].explanation}
+                  {activeQuiz.questions[currentQuestionIndex].explanation || "No explanation available."}
                 </p>
               </div>
             )}

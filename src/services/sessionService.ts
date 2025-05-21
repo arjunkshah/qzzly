@@ -338,6 +338,30 @@ export const addFlashcard = (sessionId: string, flashcard: Omit<Flashcard, 'id'>
   });
 };
 
+// Update a flashcard
+export const updateFlashcard = (sessionId: string, flashcardId: string, updates: Partial<Flashcard>): Promise<StudySession> => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const session = await getSessionById(sessionId);
+      
+      if (!session) {
+        reject(new Error("Session not found"));
+        return;
+      }
+      
+      const updatedFlashcards = session.flashcards.map(card => 
+        card.id === flashcardId ? { ...card, ...updates } : card
+      );
+      
+      const updatedSession = await updateSession(sessionId, { flashcards: updatedFlashcards });
+      resolve(updatedSession);
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 // Toggle flashcard mastered status
 export const toggleFlashcardMastery = (sessionId: string, flashcardId: string): Promise<StudySession> => {
   return new Promise(async (resolve, reject) => {

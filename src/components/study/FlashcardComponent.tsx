@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard } from "@/types/session";
-import { addFlashcard, toggleFlashcardMastery, generateContentWithGemini, getSessionById } from "@/services/sessionService";
-import { Book, Plus, Check, X, Sparkles } from "lucide-react";
+import { addFlashcard, toggleFlashcardMastery, generateContentWithGemini, getSessionById, updateFlashcard } from "@/services/sessionService";
+import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface FlashcardComponentProps {
   sessionId: string;
@@ -30,6 +32,14 @@ export function FlashcardComponent({
   const [isFlipped, setIsFlipped] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingFlashcard, setEditingFlashcard] = useState<Flashcard | null>(null);
+  const [generationCount, setGenerationCount] = useState(5);
+  const [generationOptions, setGenerationOptions] = useState({
+    count: 5,
+    complexity: "medium",
+  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { toast } = useToast();
 
   const handleAddFlashcard = async () => {
@@ -65,10 +75,51 @@ export function FlashcardComponent({
     }
   };
 
+  const handleUpdateFlashcard = async () => {
+    if (!editingFlashcard || !editingFlashcard.front.trim() || !editingFlashcard.back.trim()) {
+      toast({
+        title: "Error",
+        description: "Both sides of the flashcard must be filled in",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateFlashcard(sessionId, editingFlashcard.id, editingFlashcard);
+      
+      // Update the flashcard in the local state by forcing a re-render
+      const updatedFlashcards = [...flashcards];
+      const index = updatedFlashcards.findIndex(f => f.id === editingFlashcard.id);
+      if (index !== -1) {
+        updatedFlashcards[index] = editingFlashcard;
+      }
+      
+      setEditDialogOpen(false);
+      setEditingFlashcard(null);
+      
+      toast({
+        title: "Success",
+        description: "Flashcard updated"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update flashcard",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleToggleMastery = async (id: string) => {
     try {
       await toggleFlashcardMastery(sessionId, id);
       onMasteryToggled(id, true);
+      
+      // Automatically move to next card after marking as mastered
+      if (currentIndex < flashcards.length - 1) {
+        handleNextCard();
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -86,6 +137,13 @@ export function FlashcardComponent({
   const handlePrevCard = () => {
     setIsFlipped(false);
     setCurrentIndex((currentIndex - 1 + flashcards.length) % flashcards.length);
+  };
+
+  const handleEditCurrentCard = () => {
+    if (flashcards.length > 0) {
+      setEditingFlashcard({...flashcards[currentIndex]});
+      setEditDialogOpen(true);
+    }
   };
 
   const handleGenerateFlashcards = async () => {
@@ -106,12 +164,15 @@ export function FlashcardComponent({
       
       // Use existing flashcard topics if available, otherwise use file names as context
       let prompt = "";
+      const count = generationOptions.count;
+      const complexity = generationOptions.complexity;
+      
       if (flashcards.length > 0) {
         const existingTopics = flashcards.map(fc => fc.front).join(", ");
-        prompt = `Generate 5 educational flashcards about topics similar to these: ${existingTopics.substring(0, 300)}. Make them clear and concise.`;
+        prompt = `Generate ${count} educational flashcards about topics similar to these: ${existingTopics.substring(0, 300)}. ${getComplexityPrompt(complexity)}`;
       } else {
         const fileNames = currentSession.files.map(file => file.name.replace('.pdf', '')).join(", ");
-        prompt = `Generate 5 educational flashcards about ${fileNames}. Make them clear and concise.`;
+        prompt = `Generate ${count} educational flashcards about ${fileNames}. ${getComplexityPrompt(complexity)}`;
       }
       
       const generatedCards = await generateContentWithGemini(
@@ -148,6 +209,19 @@ export function FlashcardComponent({
     }
   };
 
+  const getComplexityPrompt = (complexity: string) => {
+    switch (complexity) {
+      case "simple":
+        return "Make them very simple and easy to understand, suitable for beginners.";
+      case "medium":
+        return "Make them clear and concise with moderate detail.";
+      case "advanced":
+        return "Make them detailed and comprehensive, suitable for advanced students.";
+      default:
+        return "Make them clear and concise.";
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -158,6 +232,60 @@ export function FlashcardComponent({
           </p>
         </div>
         <div className="flex space-x-3">
+          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Options
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Generation Settings</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Number of flashcards to generate</Label>
+                  <div className="flex items-center space-x-2">
+                    <Slider 
+                      value={[generationOptions.count]} 
+                      min={1} 
+                      max={20} 
+                      step={1}
+                      onValueChange={(vals) => setGenerationOptions({...generationOptions, count: vals[0]})}
+                      className="flex-grow"
+                    />
+                    <span className="w-8 text-center font-medium">{generationOptions.count}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Complexity level</Label>
+                  <Select 
+                    value={generationOptions.complexity}
+                    onValueChange={(value) => setGenerationOptions({...generationOptions, complexity: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select complexity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simple">Simple</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button onClick={() => setSettingsOpen(false)}>
+                  Save Settings
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
           <Button 
             variant="outline" 
             className="flex items-center gap-2 border-purple-300 text-purple-600 hover:bg-purple-50"
@@ -272,6 +400,15 @@ export function FlashcardComponent({
             </Button>
             
             <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                onClick={handleEditCurrentCard}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+              
               <Button 
                 variant="outline" 
                 className="border-red-300 text-red-600 hover:bg-red-50"
@@ -334,6 +471,52 @@ export function FlashcardComponent({
           </div>
         </div>
       )}
+      
+      {/* Edit Flashcard Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Flashcard</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-front">Front</Label>
+              <Textarea
+                id="edit-front"
+                placeholder="Question or term"
+                rows={3}
+                value={editingFlashcard?.front || ""}
+                onChange={(e) => setEditingFlashcard(prev => 
+                  prev ? {...prev, front: e.target.value} : null
+                )}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-back">Back</Label>
+              <Textarea
+                id="edit-back"
+                placeholder="Answer or definition"
+                rows={5}
+                value={editingFlashcard?.back || ""}
+                onChange={(e) => setEditingFlashcard(prev => 
+                  prev ? {...prev, back: e.target.value} : null
+                )}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button className="gradient-bg" onClick={handleUpdateFlashcard}>
+              Update Flashcard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <style>
         {`
