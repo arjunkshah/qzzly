@@ -1,4 +1,3 @@
-
 // This is a wrapper for the Google Gemini API
 
 // Use the provided Gemini API key
@@ -26,8 +25,8 @@ export async function generateWithGemini(
     // Log the API key (first few characters) to help debug
     console.log("Using API key starting with:", GEMINI_API_KEY.substring(0, 5) + "...");
     
-    // Fix: Use the v1beta endpoint which supports gemini-pro
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent", {
+    // Update to use gemini-1.5-flash model
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
