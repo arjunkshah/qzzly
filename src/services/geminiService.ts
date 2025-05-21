@@ -86,12 +86,22 @@ function extractContentFromFiles(files: any[]): string {
     return "No files available";
   }
   
-  // Extract useful information from files
-  const fileInfo = files.map(file => {
-    return `${file.name.replace('.pdf', '')}`; 
-  }).join(", ");
+  // Extract useful information from files - include more details if available
+  const fileDetails = files.map(file => {
+    let fileInfo = file.name.replace('.pdf', '');
+    
+    if (file.content) {
+      return `${fileInfo}: ${file.content.substring(0, 1000)}`;
+    }
+    
+    if (file.description) {
+      return `${fileInfo}: ${file.description}`;
+    }
+    
+    return fileInfo; 
+  }).join("\n\n");
   
-  return fileInfo;
+  return fileDetails;
 }
 
 /**
@@ -151,13 +161,40 @@ export async function generateFlashcards(
         }));
       } else {
         // Try parsing the entire response as JSON
-        const flashcardsData = JSON.parse(response);
-        if (Array.isArray(flashcardsData)) {
-          return flashcardsData.map((card: any) => ({
-            front: card.front,
-            back: card.back,
-            mastered: false
-          }));
+        try {
+          const flashcardsData = JSON.parse(response);
+          if (Array.isArray(flashcardsData)) {
+            return flashcardsData.map((card: any) => ({
+              front: card.front,
+              back: card.back,
+              mastered: false
+            }));
+          }
+        } catch (parseError) {
+          // If the response is not JSON, but Gemini is asking for more content
+          if (response.includes("Please provide") || 
+              response.includes("I need") || 
+              response.includes("more information")) {
+            
+            // Return default flashcards when Gemini can't generate based on provided content
+            return [
+              {
+                front: "What is the main subject of this study session?",
+                back: "The subject appears to be related to: " + material.split(" ").slice(0, 5).join(" "),
+                mastered: false
+              },
+              {
+                front: "How would you create effective flashcards for this topic?",
+                back: "First identify key concepts, then create clear questions on one side with concise answers on the other.",
+                mastered: false
+              },
+              {
+                front: "What are some effective study techniques?",
+                back: "Spaced repetition, active recall, concept mapping, summarization, and teaching the material to others.",
+                mastered: false
+              }
+            ];
+          }
         }
       }
       throw new Error("Could not parse JSON from response");
@@ -234,6 +271,53 @@ export async function generateQuiz(
           return quizData;
         }
       }
+      
+      // If the response is not JSON but Gemini is asking for more content
+      if (response.includes("Please provide") || 
+          response.includes("I need") || 
+          response.includes("more information")) {
+        
+        // Return default quiz when Gemini can't generate based on provided content
+        return {
+          title: "Default Quiz on Study Techniques",
+          questions: [
+            {
+              text: "What is the spaced repetition technique?",
+              options: [
+                "Studying for long hours at a time",
+                "Reviewing material at increasing intervals over time",
+                "Studying the same material repeatedly in one session",
+                "Taking frequent breaks during study sessions"
+              ],
+              correctAnswer: 1,
+              explanation: "Spaced repetition involves reviewing material at systematically increasing intervals to improve long-term retention."
+            },
+            {
+              text: "What study technique involves teaching material to others?",
+              options: [
+                "Active recall",
+                "Feynman technique",
+                "Mind mapping",
+                "Pomodoro technique"
+              ],
+              correctAnswer: 1,
+              explanation: "The Feynman technique involves explaining concepts in simple terms as if teaching someone else, which helps identify gaps in understanding."
+            },
+            {
+              text: "Which is more effective for learning?",
+              options: [
+                "Passive reading",
+                "Highlighting text",
+                "Active recall practice",
+                "Rereading notes"
+              ],
+              correctAnswer: 2,
+              explanation: "Active recall, which involves retrieving information from memory, is one of the most effective study techniques."
+            }
+          ]
+        };
+      }
+      
       throw new Error("Could not parse JSON from response");
     } catch (parseError) {
       console.error("Error parsing quiz JSON:", parseError, "Response:", response);
