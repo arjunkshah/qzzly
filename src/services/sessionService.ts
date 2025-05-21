@@ -398,6 +398,7 @@ export const generateContentWithGemini = async (
   
   try {
     if (type === 'flashcards') {
+      // Pass the prompt directly to generateFlashcards to use the user's specified topic
       const flashcards = await generateFlashcards(prompt);
       return flashcards;
     } else if (type === 'quiz') {
@@ -423,7 +424,7 @@ export const generateContentWithGemini = async (
     if (type === 'chat') {
       return "I'm sorry, I encountered an error processing your request. Please try again.";
     } else if (type === 'flashcards') {
-      // Return a few basic fallback flashcards
+      // Return a few basic fallback flashcards - remove the hardcoded cellular biology reference
       return [
         {
           front: "What is an API?",

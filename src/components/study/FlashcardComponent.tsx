@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard } from "@/types/session";
-import { addFlashcard, toggleFlashcardMastery, generateContentWithGemini } from "@/services/sessionService";
+import { addFlashcard, toggleFlashcardMastery, generateContentWithGemini, getSessionById } from "@/services/sessionService";
 import { Book, Plus, Check, X, Sparkles } from "lucide-react";
 
 interface FlashcardComponentProps {
@@ -90,16 +91,31 @@ export function FlashcardComponent({
   const handleGenerateFlashcards = async () => {
     setAiGenerating(true);
     try {
-      let topic = "cellular biology";
+      // Fetch the current session to get all files
+      const currentSession = await getSessionById(sessionId);
       
-      // If there are flashcards, use their topics to generate more relevant ones
+      if (!currentSession || currentSession.files.length === 0) {
+        toast({
+          title: "No study materials",
+          description: "Please upload PDF files first to generate flashcards from your content",
+          variant: "destructive",
+        });
+        setAiGenerating(false);
+        return;
+      }
+      
+      // Use existing flashcard topics if available, otherwise use file names as context
+      let prompt = "";
       if (flashcards.length > 0) {
         const existingTopics = flashcards.map(fc => fc.front).join(", ");
-        topic = `topics similar to these: ${existingTopics.substring(0, 300)}`;
+        prompt = `Generate 5 educational flashcards about topics similar to these: ${existingTopics.substring(0, 300)}. Make them clear and concise.`;
+      } else {
+        const fileNames = currentSession.files.map(file => file.name.replace('.pdf', '')).join(", ");
+        prompt = `Generate 5 educational flashcards about ${fileNames}. Make them clear and concise.`;
       }
       
       const generatedCards = await generateContentWithGemini(
-        `Generate 5 educational flashcards about ${topic}. Make them clear and concise.`,
+        prompt,
         "flashcards",
         sessionId
       );
