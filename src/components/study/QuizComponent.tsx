@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Quiz, Question } from "@/types/session";
+import { Quiz, Question, FileItem, Flashcard } from "@/types/session";
 import { addQuiz, generateContentWithGemini, getSessionById } from "@/services/sessionService";
 import { Check, Plus, Sparkles, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface QuizComponentProps {
   sessionId: string;
   quizzes: Quiz[];
+  files: FileItem[];
+  flashcards: Flashcard[];
   onQuizAdded: (quiz: Quiz) => void;
 }
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,10 +9,11 @@ import { MessageSquare, Send, Upload, Plus } from "lucide-react";
 
 interface ChatComponentProps {
   sessionId: string;
+  files: FileItem[];
   onFileUploaded: (file: FileItem) => void;
 }
 
-export function ChatComponent({ sessionId, onFileUploaded }: ChatComponentProps) {
+export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponentProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [loading, setLoading] = useState(false);
