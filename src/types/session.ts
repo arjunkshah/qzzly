@@ -16,6 +16,8 @@ export interface FileItem {
   url: string;
   type: string;
   uploadedAt: string;
+  content?: string;
+  summary?: string;
 }
 
 export interface Flashcard {
