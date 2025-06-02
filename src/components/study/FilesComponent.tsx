@@ -37,17 +37,32 @@ Content: ${fileContent.substring(0, 3000)}...`;
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
-      // Import pdf-parse dynamically to avoid SSR issues
-      const pdfParse = (await import('pdf-parse')).default;
+      // Import pdfjs-dist dynamically
+      const pdfjsLib = await import('pdfjs-dist');
+      
+      // Set up the worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
       
       // Convert file to ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
       
-      // Parse PDF
-      const data = await pdfParse(arrayBuffer);
+      // Load the PDF document
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       
-      console.log(`Extracted ${data.text.length} characters from ${file.name}`);
-      return data.text;
+      let fullText = '';
+      
+      // Extract text from each page
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n';
+      }
+      
+      console.log(`Extracted ${fullText.length} characters from ${file.name}`);
+      return fullText.trim();
     } catch (error) {
       console.error("Error extracting PDF text:", error);
       
