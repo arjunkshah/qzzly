@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,9 +36,24 @@ Content: ${fileContent.substring(0, 3000)}...`;
   };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
-    // For now, we'll simulate text extraction since we don't have a PDF parser
-    // In a real implementation, you'd use a library like pdf-parse or send to a backend
-    return `This is sample extracted text from ${file.name}. In a real implementation, the actual PDF content would be extracted here. File size: ${(file.size / 1024).toFixed(1)}KB. This is a placeholder to test if the AI is receiving file content.`;
+    try {
+      // Import pdf-parse dynamically to avoid SSR issues
+      const pdfParse = (await import('pdf-parse')).default;
+      
+      // Convert file to ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // Parse PDF
+      const data = await pdfParse(arrayBuffer);
+      
+      console.log(`Extracted ${data.text.length} characters from ${file.name}`);
+      return data.text;
+    } catch (error) {
+      console.error("Error extracting PDF text:", error);
+      
+      // Fallback to a more descriptive placeholder that indicates the issue
+      return `Failed to extract text from ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}. This is a ${(file.size / 1024).toFixed(1)}KB PDF file that could not be processed for text extraction.`;
+    }
   };
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -71,6 +85,7 @@ Content: ${fileContent.substring(0, 3000)}...`;
         
         // Extract text content from PDF
         const extractedContent = await extractTextFromPDF(file);
+        console.log("Extracted content preview:", extractedContent.substring(0, 200) + "...");
         
         const newFile: FileItem = {
           id: `file_${Date.now()}_${i}`,
@@ -78,7 +93,7 @@ Content: ${fileContent.substring(0, 3000)}...`;
           url: URL.createObjectURL(file),
           type: file.type,
           uploadedAt: new Date().toISOString(),
-          content: extractedContent // Store the extracted content
+          content: extractedContent
         };
         
         await addFileToSession(sessionId, newFile);
@@ -89,6 +104,7 @@ Content: ${fileContent.substring(0, 3000)}...`;
         
         try {
           const summary = await generateFileSummary(file.name, extractedContent);
+          console.log("Generated summary:", summary);
           
           // Update the file with the summary
           const updatedFile = { ...newFile, summary };
@@ -99,6 +115,7 @@ Content: ${fileContent.substring(0, 3000)}...`;
             description: `${file.name} has been uploaded and summarized successfully.`
           });
         } catch (summaryError) {
+          console.error("Summary generation failed:", summaryError);
           toast({
             title: "File uploaded",
             description: `${file.name} uploaded but summary generation failed.`
@@ -108,6 +125,7 @@ Content: ${fileContent.substring(0, 3000)}...`;
         }
       }
     } catch (error) {
+      console.error("File upload error:", error);
       toast({
         title: "Error",
         description: "Failed to upload file",
@@ -140,7 +158,7 @@ Content: ${fileContent.substring(0, 3000)}...`;
       <div className="mb-6">
         <h2 className="text-2xl font-semibold mb-2">Study Materials</h2>
         <p className="text-gray-600 mb-4">
-          Upload your PDF notes and study materials for AI analysis. After upload, we'll generate a summary to verify AI access.
+          Upload your PDF notes and study materials for AI analysis. We'll extract the actual text content and generate a summary.
         </p>
         
         {/* File upload area */}
