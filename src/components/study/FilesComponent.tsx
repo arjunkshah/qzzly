@@ -1,5 +1,3 @@
-
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,11 +40,8 @@ Content: ${fileContent.substring(0, 3000)}...`;
       // Import pdfjs-dist dynamically
       const pdfjsLib = await import('pdfjs-dist');
       
-      // Use a working worker URL that's compatible with the current version
-      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.js',
-        import.meta.url
-      ).toString();
+      // Use CDN worker URL that matches the version
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       
       // Convert file to ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
@@ -305,4 +300,3 @@ Content: ${fileContent.substring(0, 3000)}...`;
     </div>
   );
 }
-
