@@ -24,65 +24,96 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
 
   const generateFileSummary = async (fileName: string, fileContent: string): Promise<string> => {
     try {
+      // Ensure we have meaningful content to summarize
+      if (!fileContent || fileContent.length < 50) {
+        return "Unable to generate summary - insufficient text content extracted from PDF.";
+      }
+
+      // Take a substantial portion of the content for analysis
+      const contentForSummary = fileContent.length > 5000 
+        ? fileContent.substring(0, 5000) + "..."
+        : fileContent;
+
       const prompt = `Please provide a concise summary of the following document content. Focus on the main topics, key concepts, and what a student could learn from this material:
 
 Document: ${fileName}
-Content: ${fileContent.substring(0, 3000)}...`;
+
+Content: ${contentForSummary}
+
+Please provide a clear, educational summary regardless of the document format or structure.`;
       
       const summary = await generateWithGemini(prompt, { temperature: 0.3, maxOutputTokens: 200 });
       return summary;
     } catch (error) {
       console.error("Error generating file summary:", error);
-      return "Unable to generate summary - file content may not be accessible to AI.";
+      return "Unable to generate summary - AI processing error occurred.";
     }
   };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
-      // Set up the worker with matching version
+      // Set up the worker
       pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
       
       // Convert file to ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
       
       // Load the PDF document
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pdf = await pdfjsLib.getDocument({ 
+        data: arrayBuffer,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true
+      }).promise;
+      
+      console.log(`PDF loaded successfully. Pages: ${pdf.numPages}`);
       
       let fullText = '';
       
       // Extract text from each page
       for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        fullText += pageText + '\n';
+        try {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          
+          // Extract text items and join them with spaces
+          const pageText = textContent.items
+            .filter((item: any) => item.str && item.str.trim())
+            .map((item: any) => item.str.trim())
+            .join(' ');
+          
+          if (pageText.trim()) {
+            fullText += pageText + '\n\n';
+          }
+          
+          console.log(`Page ${i}: extracted ${pageText.length} characters`);
+        } catch (pageError) {
+          console.warn(`Error extracting text from page ${i}:`, pageError);
+          continue;
+        }
       }
       
-      // Clean up the text - remove excessive whitespace and empty lines
+      // Clean up the text
       const cleanedText = fullText
         .replace(/\s+/g, ' ')
         .replace(/\n\s*\n/g, '\n')
         .trim();
       
-      console.log(`Extracted ${cleanedText.length} characters from ${file.name}`);
-      console.log(`First 200 characters: "${cleanedText.substring(0, 200)}"`);
+      console.log(`Final extraction: ${cleanedText.length} characters from ${file.name}`);
+      console.log(`First 500 characters: "${cleanedText.substring(0, 500)}"`);
       
       if (cleanedText.length === 0) {
-        return `The PDF file "${file.name}" appears to be empty or contains no extractable text. This could be an image-based PDF or a corrupted file. File size: ${(file.size / 1024).toFixed(1)}KB.`;
+        return `This PDF appears to contain no extractable text. File: ${file.name} (${(file.size / 1024).toFixed(1)}KB). This might be an image-based PDF or contain only visual elements.`;
       }
       
-      if (cleanedText.length < 50) {
-        return `The PDF file "${file.name}" contains very little text (${cleanedText.length} characters): "${cleanedText}". This might be an image-based PDF or contain mostly non-text content.`;
+      if (cleanedText.length < 100) {
+        return `Limited text extracted from ${file.name}: "${cleanedText}". This PDF may contain mostly images or non-text content. File size: ${(file.size / 1024).toFixed(1)}KB.`;
       }
       
       return cleanedText;
     } catch (error) {
       console.error("Error extracting PDF text:", error);
-      
-      // Fallback to a more descriptive placeholder that indicates the issue
-      return `Failed to extract text from ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}. This is a ${(file.size / 1024).toFixed(1)}KB PDF file that could not be processed for text extraction.`;
+      return `Failed to extract text from ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}. File size: ${(file.size / 1024).toFixed(1)}KB. This may be an encrypted, corrupted, or image-only PDF.`;
     }
   };
 
@@ -113,9 +144,11 @@ Content: ${fileContent.substring(0, 3000)}...`;
           continue;
         }
         
+        console.log(`Processing file: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+        
         // Extract text content from PDF
         const extractedContent = await extractTextFromPDF(file);
-        console.log("Extracted content preview:", extractedContent.substring(0, 200) + "...");
+        console.log("Extracted content length:", extractedContent.length);
         
         const newFile: FileItem = {
           id: `file_${Date.now()}_${i}`,
@@ -129,10 +162,11 @@ Content: ${fileContent.substring(0, 3000)}...`;
         await addFileToSession(sessionId, newFile);
         onFileAdded(newFile);
         
-        // Generate summary to test AI access
+        // Generate summary
         setGeneratingSummaries(prev => [...prev, newFile.id]);
         
         try {
+          console.log(`Generating summary for ${file.name} with ${extractedContent.length} characters`);
           const summary = await generateFileSummary(file.name, extractedContent);
           console.log("Generated summary:", summary);
           
@@ -188,7 +222,7 @@ Content: ${fileContent.substring(0, 3000)}...`;
       <div className="mb-6">
         <h2 className="text-2xl font-semibold mb-2">Study Materials</h2>
         <p className="text-gray-600 mb-4">
-          Upload your PDF notes and study materials for AI analysis. We'll extract the actual text content and generate a summary.
+          Upload your PDF notes and study materials for AI analysis. We'll extract the text content and generate summaries.
         </p>
         
         {/* File upload area */}
@@ -289,10 +323,10 @@ Content: ${fileContent.substring(0, 3000)}...`;
                       {file.content && (
                         <details className="mt-2">
                           <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-                            View extracted content (for debugging)
+                            View extracted content ({file.content.length} characters)
                           </summary>
                           <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 max-h-32 overflow-y-auto">
-                            {file.content.substring(0, 500)}...
+                            {file.content.substring(0, 1000)}{file.content.length > 1000 ? "..." : ""}
                           </div>
                         </details>
                       )}
