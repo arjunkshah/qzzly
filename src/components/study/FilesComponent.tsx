@@ -1,4 +1,5 @@
 
+
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +8,8 @@ import { addFileToSession } from "@/services/sessionService";
 import { generateWithGemini } from "@/services/geminiService";
 import { useToast } from "@/hooks/use-toast";
 import { File, Upload, Download, Trash, FileText } from "lucide-react";
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 interface FilesComponentProps {
   sessionId: string;
@@ -38,11 +41,8 @@ Content: ${fileContent.substring(0, 3000)}...`;
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
-      // Import pdfjs-dist dynamically
-      const pdfjsLib = await import('pdfjs-dist');
-      
-      // Use CDN worker URL that matches the installed package version 5.3.31
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.js';
+      // Set up the worker with matching version
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
       
       // Convert file to ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
