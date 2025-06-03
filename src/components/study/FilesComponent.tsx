@@ -1,5 +1,3 @@
-
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,8 +60,24 @@ Content: ${fileContent.substring(0, 3000)}...`;
         fullText += pageText + '\n';
       }
       
-      console.log(`Extracted ${fullText.length} characters from ${file.name}`);
-      return fullText.trim();
+      // Clean up the text - remove excessive whitespace and empty lines
+      const cleanedText = fullText
+        .replace(/\s+/g, ' ')
+        .replace(/\n\s*\n/g, '\n')
+        .trim();
+      
+      console.log(`Extracted ${cleanedText.length} characters from ${file.name}`);
+      console.log(`First 200 characters: "${cleanedText.substring(0, 200)}"`);
+      
+      if (cleanedText.length === 0) {
+        return `The PDF file "${file.name}" appears to be empty or contains no extractable text. This could be an image-based PDF or a corrupted file. File size: ${(file.size / 1024).toFixed(1)}KB.`;
+      }
+      
+      if (cleanedText.length < 50) {
+        return `The PDF file "${file.name}" contains very little text (${cleanedText.length} characters): "${cleanedText}". This might be an image-based PDF or contain mostly non-text content.`;
+      }
+      
+      return cleanedText;
     } catch (error) {
       console.error("Error extracting PDF text:", error);
       
