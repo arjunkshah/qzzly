@@ -42,13 +42,13 @@ This document outlines the remaining critical tasks required to launch a functio
 
 ### 4. Testing & Deployment
 
-- [ ] **Write Basic Integration Tests:**
-  - [ ] **Task:** Create tests for the most critical user flow: uploading a PDF, generating flashcards, and starting a quiz.
-  - [ ] **Reason:** To ensure the core application workflow is stable and prevent regressions.
+- [x] **Write Basic Integration Tests:**
+  - [x] **Task:** Create tests for the most critical user flow: uploading a PDF, generating flashcards, and starting a quiz.
+  - [x] **Reason:** To ensure the core application workflow is stable and prevent regressions.
 
-- [ ] **Prepare for Deployment:**
-  - [ ] **Task:** Create a production build and test it locally. Prepare deployment configurations for a target platform (e.g., Vercel, Netlify).
-  - [ ] **Reason:** To ensure the application can be successfully deployed and made available to users.
+- [x] **Prepare for Deployment:**
+  - [x] **Task:** Create a production build and test it locally. Prepare deployment configurations for a target platform (e.g., Vercel, Netlify).
+  - [x] **Reason:** To ensure the application can be successfully deployed and made available to users.
 
 ---
 ## Post-MVP / Future Work
