@@ -1,10 +1,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 const PricingSection = () => {
+  const sectionRef = useScrollAnimation<HTMLElement>();
   return (
-    <section id="pricing" className="py-24 bg-gray-50">
+    <section ref={sectionRef} id="pricing" className="py-24 bg-gray-50">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-16">
           <span className="text-purple-600 font-semibold text-sm uppercase tracking-wider mb-2 block">Pricing</span>

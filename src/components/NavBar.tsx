@@ -5,12 +5,14 @@ import { LoginDialog } from "@/components/auth/LoginDialog";
 import { SignupDialog } from "@/components/auth/SignupDialog";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 export const NavBar = () => {
   const { isAuthenticated } = useAuth();
+  const headerRef = useScrollAnimation<HTMLElement>();
 
   return (
-    <header className="bg-white py-5 border-b border-gray-100 sticky top-0 z-50 shadow-sm backdrop-blur-lg bg-white/90">
+    <header ref={headerRef} className="bg-white py-5 border-b border-gray-100 sticky top-0 z-50 shadow-sm backdrop-blur-lg bg-white/90">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center">

@@ -1,9 +1,11 @@
 
 import { FileText, BookOpen, CheckCircle } from "lucide-react";
+import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 const FeaturesSection = () => {
+  const sectionRef = useScrollAnimation<HTMLElement>();
   return (
-    <section id="features" className="py-20 bg-white">
+    <section ref={sectionRef} id="features" className="py-20 bg-white">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-16">
           <span className="text-purple-600 font-semibold text-sm uppercase tracking-wider mb-2 block">Features</span>

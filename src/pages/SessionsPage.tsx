@@ -12,6 +12,7 @@ import { StudySession } from "@/types/session";
 import { getSessions, createSession, deleteSession } from "@/services/sessionService";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Trash } from "lucide-react";
+import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<StudySession[]>([]);
@@ -96,11 +97,13 @@ export default function SessionsPage() {
     }).format(date);
   };
 
+  const mainRef = useScrollAnimation<HTMLElement>();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
-      
-      <main className="container mx-auto px-4 py-8">
+
+      <main ref={mainRef} className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Your Study Sessions</h1>
           
