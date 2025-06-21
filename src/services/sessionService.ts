@@ -271,71 +271,58 @@ export const updateSession = (id: string, updates: Partial<StudySession>): Promi
 };
 
 // Add a file to a session
-export const addFileToSession = (sessionId: string, file: FileItem): Promise<StudySession> => {
+export const addFileToSession = async (sessionId: string, file: FileItem): Promise<StudySession> => {
   initializeData();
-  return new Promise((resolve) => {
-    try {
-      const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]');
-      const sessionIndex = sessions.findIndex((s: StudySession) => s.id === sessionId);
-      
-      if (sessionIndex === -1) {
-        throw new Error('Session not found');
-      }
 
-      // Ensure file has required fields
-      if (!file.id || !file.name || !file.type) {
-        throw new Error('Invalid file data');
-      }
-      
-      // Create a file object without the content for localStorage
-      const fileForStorage = {
-        ...file,
-        content: undefined // Remove content from localStorage storage
-      };
-      
-      // Add file to session
-      sessions[sessionIndex].files.push(fileForStorage);
-      sessions[sessionIndex].updatedAt = new Date().toISOString();
-      
-      // Save to localStorage
-      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-      
-      // Add file to session context for OpenAI with content
-      addFileToSessionContext(sessionId, file);
-      
-      // Start file ingestion in the background
-      ingestAndSummarizeFile(file, sessionId)
-        .then(result => {
-          // Store the summary and topics
-          const fileSummaries = JSON.parse(localStorage.getItem('file_summaries') || '{}');
-          if (!fileSummaries[sessionId]) {
-            fileSummaries[sessionId] = {};
-          }
-          fileSummaries[sessionId][file.id] = result;
-          localStorage.setItem('file_summaries', JSON.stringify(fileSummaries));
-          
-          console.log(`Successfully processed file ${file.name}`);
-        })
-        .catch(error => {
-          console.error('Error ingesting file:', error);
-          toast({
-            title: "Error",
-            description: `Failed to process ${file.name}. Please try uploading again.`,
-            variant: "destructive"
-          });
-        });
-      
-      setTimeout(() => resolve(sessions[sessionIndex]), 300); // Simulate API delay
-        } catch (error) {
-      console.error('Error in addFileToSession:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add file. Please try again.",
-        variant: "destructive"
-      });
-      throw error;
+  try {
+    const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]') as StudySession[];
+    const sessionIndex = sessions.findIndex((s) => s.id === sessionId);
+
+    if (sessionIndex === -1) {
+      throw new Error('Session not found');
     }
-  });
+
+    if (!file.id || !file.name || !file.type) {
+      throw new Error('Invalid file data');
+    }
+
+    const fileForStorage = { ...file, content: undefined };
+    sessions[sessionIndex].files.push(fileForStorage);
+    sessions[sessionIndex].updatedAt = new Date().toISOString();
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+
+    addFileToSessionContext(sessionId, file);
+
+    // No need to await this; it runs in the background
+    ingestAndSummarizeFile(file, sessionId)
+      .then(result => {
+        const fileSummaries = JSON.parse(localStorage.getItem('file_summaries') || '{}');
+        if (!fileSummaries[sessionId]) {
+          fileSummaries[sessionId] = {};
+        }
+        fileSummaries[sessionId][file.id] = result;
+        localStorage.setItem('file_summaries', JSON.stringify(fileSummaries));
+        console.log(`Successfully processed file ${file.name}`);
+      })
+      .catch(error => {
+        console.error('Error ingesting file:', error);
+        toast({
+          title: "Error",
+          description: `Failed to process ${file.name}. Please try uploading again.`,
+          variant: "destructive"
+        });
+      });
+
+    return sessions[sessionIndex];
+  } catch (error) {
+    console.error('Error in addFileToSession:', error);
+    toast({
+      title: "Error",
+      description: "Failed to add file. Please try again.",
+      variant: "destructive"
+    });
+    throw error;
+  }
 };
 
 // Remove a file from a session
@@ -379,7 +366,7 @@ export const removeFileFromSession = (sessionId: string, fileId: string): Promis
 };
 
 // Get file summaries for a session
-export const getFileSummaries = (sessionId: string): Promise<Record<string, any>> => {
+export const getFileSummaries = (sessionId: string): Promise<Record<string, { summary: string, topics: string[] }>> => {
   return new Promise((resolve) => {
     const fileSummaries = JSON.parse(localStorage.getItem('file_summaries') || '{}');
     const sessionSummaries = fileSummaries[sessionId] || {};
@@ -417,132 +404,81 @@ export const addChatMessage = (sessionId: string, message: Omit<ChatMessage, 'id
 };
 
 // Add multiple flashcards to a session at once (batch operation)
-export const addFlashcards = (sessionId: string, flashcards: Omit<Flashcard, 'id'>[]): Promise<StudySession> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const session = await getSessionById(sessionId);
-      
-      if (!session) {
-        reject(new Error("Session not found"));
-        return;
-      }
-      
-      // Create new flashcards with unique IDs
-      const newFlashcards = flashcards.map((flashcard, index) => ({
-        ...flashcard,
-        id: `fc_${Date.now()}_${index}`,
-        mastered: false
-      }));
-      
-      const updatedFlashcards = [...session.flashcards, ...newFlashcards];
-      const updatedSession = await updateSession(sessionId, { flashcards: updatedFlashcards });
-      resolve(updatedSession);
-      
-    } catch (error) {
-      reject(error);
-    }
-  });
+export const addFlashcards = async (sessionId: string, flashcards: Omit<Flashcard, 'id'>[]): Promise<StudySession> => {
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  const newFlashcards = flashcards.map((flashcard, index) => ({
+    ...flashcard,
+    id: `fc_${Date.now()}_${index}`,
+    mastered: false
+  }));
+
+  const updatedFlashcards = [...session.flashcards, ...newFlashcards];
+  return await updateSession(sessionId, { flashcards: updatedFlashcards });
 };
 
 // Add a flashcard to a session
-export const addFlashcard = (sessionId: string, flashcard: Omit<Flashcard, 'id'>): Promise<StudySession> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const session = await getSessionById(sessionId);
-      
-      if (!session) {
-        reject(new Error("Session not found"));
-        return;
-      }
-      
-      const newFlashcard = {
-        ...flashcard,
-        id: `fc_${Date.now()}`,
-        mastered: false
-      };
-      
-      const updatedFlashcards = [...session.flashcards, newFlashcard];
-      const updatedSession = await updateSession(sessionId, { flashcards: updatedFlashcards });
-      resolve(updatedSession);
-      
-    } catch (error) {
-      reject(error);
-    }
-  });
+export const addFlashcard = async (sessionId: string, flashcard: Omit<Flashcard, 'id'>): Promise<StudySession> => {
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  const newFlashcard = {
+    ...flashcard,
+    id: `fc_${Date.now()}`,
+    mastered: false
+  };
+
+  const updatedFlashcards = [...session.flashcards, newFlashcard];
+  return await updateSession(sessionId, { flashcards: updatedFlashcards });
 };
 
 // Update a flashcard
-export const updateFlashcard = (sessionId: string, flashcardId: string, updates: Partial<Flashcard>): Promise<StudySession> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const session = await getSessionById(sessionId);
-      
-      if (!session) {
-        reject(new Error("Session not found"));
-        return;
-      }
-      
-      const updatedFlashcards = session.flashcards.map(card => 
-        card.id === flashcardId ? { ...card, ...updates } : card
-      );
-      
-      const updatedSession = await updateSession(sessionId, { flashcards: updatedFlashcards });
-      resolve(updatedSession);
-      
-    } catch (error) {
-      reject(error);
-    }
-  });
+export const updateFlashcard = async (sessionId: string, flashcardId: string, updates: Partial<Flashcard>): Promise<StudySession> => {
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  const updatedFlashcards = session.flashcards.map(card => 
+    card.id === flashcardId ? { ...card, ...updates } : card
+  );
+
+  return await updateSession(sessionId, { flashcards: updatedFlashcards });
 };
 
 // Toggle flashcard mastered status
-export const toggleFlashcardMastery = (sessionId: string, flashcardId: string): Promise<StudySession> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const session = await getSessionById(sessionId);
-      
-      if (!session) {
-        reject(new Error("Session not found"));
-        return;
-      }
-      
-      const updatedFlashcards = session.flashcards.map(card => 
-        card.id === flashcardId ? { ...card, mastered: !card.mastered } : card
-      );
-      
-      const updatedSession = await updateSession(sessionId, { flashcards: updatedFlashcards });
-      resolve(updatedSession);
-      
-    } catch (error) {
-      reject(error);
-    }
-  });
+export const toggleFlashcardMastery = async (sessionId: string, flashcardId: string): Promise<StudySession> => {
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  const updatedFlashcards = session.flashcards.map(card => 
+    card.id === flashcardId ? { ...card, mastered: !card.mastered } : card
+  );
+
+  return await updateSession(sessionId, { flashcards: updatedFlashcards });
 };
 
 // Add a quiz to a session
-export const addQuiz = (sessionId: string, quiz: Omit<Quiz, 'id'>): Promise<StudySession> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const session = await getSessionById(sessionId);
-      
-      if (!session) {
-        reject(new Error("Session not found"));
-        return;
-      }
-      
-      const newQuiz = {
-        ...quiz,
-        id: `quiz_${Date.now()}`
-      };
-      
-      const updatedQuizzes = [...session.quizzes, newQuiz];
-      const updatedSession = await updateSession(sessionId, { quizzes: updatedQuizzes });
-      resolve(updatedSession);
-      
-    } catch (error) {
-      reject(error);
-    }
-  });
+export const addQuiz = async (sessionId: string, quiz: Omit<Quiz, 'id'>): Promise<StudySession> => {
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  const newQuiz = {
+    ...quiz,
+    id: `quiz_${Date.now()}`
+  };
+
+  const updatedQuizzes = [...session.quizzes, newQuiz];
+  return await updateSession(sessionId, { quizzes: updatedQuizzes });
 };
 
 // Get file content from storage
@@ -552,33 +488,22 @@ const getFileContent = (fileId: string): string | null => {
 };
 
 // Add study material to a session
-export const addStudyMaterial = (sessionId: string, material: Omit<StudyMaterial, 'id'>): Promise<StudySession> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const session = await getSessionById(sessionId);
-      
-      if (!session) {
-        reject(new Error("Session not found"));
-        return;
-      }
-      
-      const newMaterial = {
-        ...material,
-        id: `material_${Date.now()}`,
-        createdAt: new Date().toISOString()
-      };
-      
-      // Initialize studyMaterials array if it doesn't exist
-      const studyMaterials = session.studyMaterials || [];
-      const updatedMaterials = [...studyMaterials, newMaterial];
-      
-      const updatedSession = await updateSession(sessionId, { studyMaterials: updatedMaterials });
-      resolve(updatedSession);
-      
-    } catch (error) {
-      reject(error);
-    }
-  });
+export const addStudyMaterial = async (sessionId: string, material: Omit<StudyMaterial, 'id'>): Promise<StudySession> => {
+  const session = await getSessionById(sessionId);
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  const newMaterial = {
+    ...material,
+    id: `material_${Date.now()}`,
+    createdAt: new Date().toISOString()
+  };
+
+  const studyMaterials = session.studyMaterials || [];
+  const updatedMaterials = [...studyMaterials, newMaterial];
+
+  return await updateSession(sessionId, { studyMaterials: updatedMaterials });
 };
 
 // Generate flashcards using OpenAI API
@@ -711,92 +636,6 @@ export const generateLongAnswerWithOpenAI = async (
       description: error instanceof Error ? error.message : "Failed to generate answer",
       variant: "destructive"
     });
-    throw error;
-  }
-};
-
-// Use OpenAI API to generate content
-export const generateContentWithOpenAI = async (
-  prompt: string, 
-  type: 'flashcards' | 'quiz' | 'chat' | 'study' | 'longAnswer',
-  sessionId?: string,
-  options: any = {}
-): Promise<any> => {
-  console.log(`Generating ${type} with prompt: ${prompt}`);
-  
-  try {
-    // Get session files if sessionId is provided
-    let sessionFiles = [];
-    if (sessionId) {
-      const session = await getSessionById(sessionId);
-      if (session?.files) {
-        sessionFiles = session.files;
-      }
-    }
-    
-    // Build context about available files
-    let fileContext = '';
-    if (sessionFiles.length > 0) {
-      const fileInfo = sessionFiles
-        .map(file => `${file.name} (${file.type})`)
-        .join(', ');
-      
-      fileContext = `\n\nFiles in this study session: ${fileInfo}`;
-    }
-    
-    // Import Gemini service
-    const gemini = await import('./geminiService');
-    
-    switch (type) {
-      case 'flashcards':
-        return await gemini.generateFlashcards(
-          prompt,
-          options.count || 5,
-          options.complexity || 'medium',
-          options.files,
-          sessionId
-        );
-      
-      case 'quiz':
-        return await gemini.generateQuiz(
-        prompt + fileContext, 
-          options.questionCount || 7,
-          options.difficulty || "medium",
-          options.topic || "",
-          options.includeExplanations !== false,
-        sessionFiles,
-        sessionId
-      );
-      
-      case 'study':
-        return await gemini.generateStudyMaterial(
-          prompt,
-          options.format || 'notes',
-          options.complexity || 'medium',
-          sessionFiles,
-          sessionId
-        );
-      
-      case 'longAnswer':
-        return await gemini.generateLongAnswer(
-          prompt,
-          options.complexity || 'medium',
-          sessionFiles,
-          sessionId
-        );
-      
-      case 'chat':
-        return await gemini.generateWithGemini(prompt, {
-        temperature: 0.7,
-          maxOutputTokens: 2048,
-          sessionId: sessionId
-      });
-      
-      default:
-        throw new Error(`Unsupported content type: ${type}`);
-    }
-  } catch (error) {
-    console.error(`Error generating ${type}:`, error);
     throw error;
   }
 };

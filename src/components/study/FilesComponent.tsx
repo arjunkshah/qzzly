@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileItem } from "@/types/session";
 import { addFileToSession } from "@/services/sessionService";
-import { generateWithGemini } from "@/services/geminiService";
+import { generateWithOpenAI } from "@/services/openaiService";
 import { useToast } from "@/hooks/use-toast";
 import { File, Upload, Download, Trash, FileText } from "lucide-react";
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
@@ -41,7 +41,7 @@ Content: ${contentForSummary}
 
 Please provide a clear, educational summary regardless of the document format or structure.`;
       
-      const summary = await generateWithGemini(prompt, { temperature: 0.3, maxOutputTokens: 200 });
+      const summary = await generateWithOpenAI(prompt, { temperature: 0.3, maxTokens: 200, model: 'gpt-4' });
       return summary;
     } catch (error) {
       console.error("Error generating file summary:", error);
@@ -75,10 +75,15 @@ Please provide a clear, educational summary regardless of the document format or
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
           
+          type TextItem = {
+            str: string;
+            // Add other properties from the TextItem type if needed
+          };
+
           // Extract text items and join them with spaces
           const pageText = textContent.items
-            .filter((item: any) => item.str && item.str.trim())
-            .map((item: any) => item.str.trim())
+            .filter((item): item is TextItem => typeof item.str === 'string' && item.str.trim().length > 0)
+            .map((item: TextItem) => item.str.trim())
             .join(' ');
           
           if (pageText.trim()) {

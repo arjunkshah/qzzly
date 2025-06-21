@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Quiz, Question, FileItem, Flashcard } from "@/types/session";
-import { addQuiz, generateContentWithOpenAI, getSessionById } from "@/services/sessionService";
+import { addQuiz, getSessionById } from "@/services/sessionService";
+import { generateQuiz } from "@/services/openaiService";
 import { Check, Plus, Sparkles, Settings, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -129,17 +130,15 @@ export function QuizComponent({
         prompt += " with detailed explanations for each correct answer";
       }
       
-      const generatedQuiz = await generateContentWithOpenAI(
+      const generatedQuiz = await generateQuiz(
         prompt,
-        "quiz",
-        sessionId,
-        {
-          questionCount: quizSettings.questionCount,
-          difficulty: quizSettings.difficulty,
-          topic: topic,
-          includeExplanations: quizSettings.showExplanations,
-          questionTypes: quizSettings.questionTypes
-        }
+        quizSettings.questionCount,
+        quizSettings.difficulty,
+        topic,
+        quizSettings.showExplanations,
+        quizSettings.questionTypes,
+        session.files,
+        sessionId
       );
       
       // Make sure we have the right number of questions (API might return more or less)
@@ -148,7 +147,7 @@ export function QuizComponent({
       const newQuiz: Quiz = {
         id: `quiz_${Date.now()}`,
         title: generatedQuiz.title,
-        questions: limitedQuestions.map((q: any, index: number) => ({
+        questions: limitedQuestions.map((q: Omit<Question, 'id'>, index: number) => ({
           id: `q_${Date.now()}_${index}`,
           ...q
         }))

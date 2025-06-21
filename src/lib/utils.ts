@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { TextItem } from "pdfjs-dist/types/src/display/api";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -12,7 +13,6 @@ export function cn(...inputs: ClassValue[]) {
  * @returns Promise<string> Full text content
  */
 export async function extractTextFromPDF(file: File | Blob): Promise<string> {
-  // @ts-expect-error: pdfjs-dist may not have types for this import
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
   // Set the workerSrc to the local path for browser compatibility
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
@@ -22,7 +22,11 @@ export async function extractTextFromPDF(file: File | Blob): Promise<string> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const pageText = content.items.map((item: any) => item.str).join(' ');
+    
+    const pageText = content.items
+      .filter((item): item is TextItem => 'str' in item)
+      .map((item) => item.str)
+      .join(' ');
     fullText += `\n\n--- Page ${i} ---\n` + pageText;
   }
   return fullText;

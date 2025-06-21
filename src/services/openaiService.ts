@@ -15,9 +15,17 @@ const MODEL_LIMITS = {
   'gpt-3.5-turbo': { maxTokens: 4096, inputLimit: 3000 }
 };
 
+// Define a more specific type for file items
+interface FileItem {
+  id: string;
+  name: string;
+  type: string;
+  content?: string;
+}
+
 // Store API contexts for each session
 interface SessionContext {
-  files: any[];
+  files: FileItem[];
   filePages?: Record<string, string[]>; // Store PDF pages by file ID
   history: {
     role: 'user' | 'assistant' | 'system';
@@ -32,7 +40,7 @@ const sessionContexts: Record<string, SessionContext> = {};
 export interface OpenAIOptions {
   temperature?: number;
   maxTokens?: number;
-  sessionFiles?: any[];
+  sessionFiles?: FileItem[];
   sessionId?: string;
   model?: string;
 }
@@ -198,7 +206,7 @@ export function getSessionContext(sessionId: string): SessionContext {
 /**
  * Add a file to the session context
  */
-export function addFileToSessionContext(sessionId: string, file: any): void {
+export function addFileToSessionContext(sessionId: string, file: FileItem): void {
   const context = getSessionContext(sessionId);
   
   // Check if file already exists
@@ -232,7 +240,7 @@ function getFileContent(sessionId: string, maxTokens: number = 2000): string {
     return "";
   }
   
-  let allContent = context.files
+  const allContent = context.files
     .map(file => {
       if (file.content) {
         return `\n\n--- Content from ${file.name} ---\n${file.content}\n--- End of ${file.name} ---`;
@@ -279,7 +287,7 @@ export async function generateWithOpenAI(
     }
     
     // Build messages array
-    const messages: any[] = [];
+    const messages: { role: 'user' | 'assistant' | 'system'; content: string }[] = [];
     
     // Add system message with file content if available
     if (fileContent) {
@@ -403,7 +411,7 @@ export async function generateFlashcards(
   material: string, 
   count: number = 5, 
   complexity: string = "medium", 
-  files?: any[],
+  files?: FileItem[],
   sessionId?: string
 ): Promise<Array<{front: string, back: string, mastered: boolean}>> {
   try {
@@ -485,7 +493,7 @@ Only return the JSON array, no additional text.`;
     }
     
     // Ensure we have the right number of flashcards and add mastered property
-    const result = flashcards.slice(0, count).map((card: any) => ({
+    const result = flashcards.slice(0, count).map((card: { front?: string; question?: string; back?: string; answer?: string }) => ({
       front: card.front || card.question || "Study question",
       back: card.back || card.answer || "Study this topic further",
       mastered: false
@@ -517,9 +525,9 @@ export async function generateQuiz(
   topic: string = "", 
   includeExplanations: boolean = true,
   questionTypes: string[] = ["multiple-choice"],
-  files?: any[],
+  files?: FileItem[],
   sessionId?: string
-): Promise<any> {
+): Promise<{ title: string; questions: { text: string; options: string[]; correctAnswer: number; explanation: string; }[] }> {
   try {
     let difficultyPrompt = "";
     switch(difficulty.toLowerCase()) {
@@ -647,7 +655,7 @@ export async function generateStudyMaterial(
   topic: string,
   format: 'notes' | 'outline' | 'summary' = 'notes',
   complexity: string = "medium",
-  files?: any[],
+  files?: FileItem[],
   sessionId?: string
 ): Promise<string> {
   try {
@@ -717,7 +725,7 @@ Provide the study material in a well-formatted, readable format.`;
 export async function generateLongAnswer(
   question: string,
   complexity: string = "medium",
-  files?: any[],
+  files?: FileItem[],
   sessionId?: string
 ): Promise<string> {
   try {
@@ -773,7 +781,7 @@ Please provide a detailed response:`;
  * Ingest and summarize file content
  */
 export async function ingestAndSummarizeFile(
-  file: any,
+  file: FileItem,
   sessionId: string
 ): Promise<{summary: string; topics: string[]}> {
   try {
@@ -784,9 +792,46 @@ export async function ingestAndSummarizeFile(
       };
     }
 
-    // Use Gemini API for all file types
-    const gemini = await import('./geminiService');
-    return await gemini.ingestAndSummarizeFile(file, sessionId);
+    const contentForSummary = file.content.length > 4000 
+      ? chunkText(file.content, 4000)[0] + "..."
+      : file.content;
+
+    const prompt = `Please provide a concise summary and extract up to 5 main topics from the following document content.
+
+Document: ${file.name}
+Content: ${contentForSummary}
+
+Return the response as a JSON object with this exact format:
+{
+  "summary": "A concise summary of the document.",
+  "topics": ["Topic 1", "Topic 2", "Topic 3"]
+}
+
+Only return the JSON object, no additional text.`;
+
+    const response = await generateWithOpenAI(prompt, {
+      sessionId,
+      temperature: 0.3,
+      maxTokens: 400,
+      model: 'gpt-4'
+    });
+
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          summary: parsed.summary || "Summary could not be generated.",
+          topics: parsed.topics || [file.name.replace(/\.[^/.]+$/, "")]
+        };
+      }
+      throw new Error("No JSON object found in response");
+    } catch (e) {
+      return {
+        summary: "Failed to parse summary from AI response.",
+        topics: [file.name.replace(/\.[^/.]+$/, "")]
+      };
+    }
     
   } catch (error) {
     console.error("Error ingesting file:", error);

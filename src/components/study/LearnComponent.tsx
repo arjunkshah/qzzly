@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Flashcard, StudyMaterial, FileItem } from "@/types/session";
-import { toggleFlashcardMastery, generateContentWithOpenAI } from "@/services/sessionService";
+import { toggleFlashcardMastery, generateStudyMaterialWithOpenAI, generateLongAnswerWithOpenAI } from "@/services/sessionService";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Check, X, ArrowLeft, ArrowRight, Lightbulb, BookText, MessageSquare, BrainCircuit } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,7 +59,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     
   }, [flashcards]);
 
-  const shuffleArray = (array: any[]) => {
+  const shuffleArray = <T,>(array: T[]): T[] => {
     const newArray = [...array];
     for (let i = newArray.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -153,11 +153,11 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     
     setIsGenerating(true);
     try {
-      const material = await generateContentWithOpenAI(
-        topic,
-        'study',
+      const material = await generateStudyMaterialWithOpenAI(
         sessionId,
-        { format, complexity }
+        topic,
+        format, 
+        complexity
       );
       
       setStudyMaterialContent(material);
@@ -188,11 +188,10 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     
     setIsGeneratingAnswer(true);
     try {
-      const answer = await generateContentWithOpenAI(
-        question,
-        'longAnswer',
+      const answer = await generateLongAnswerWithOpenAI(
         sessionId,
-        { complexity: answerComplexity }
+        question,
+        answerComplexity
       );
       
       setLongAnswer(answer);
@@ -524,7 +523,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
                 
                 <div>
                   <Label>Format</Label>
-                  <RadioGroup value={format} onValueChange={(value) => setFormat(value as any)} className="flex mt-2">
+                  <RadioGroup value={format} onValueChange={(value) => setFormat(value as "notes" | "outline" | "summary")} className="flex mt-2">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="notes" id="notes" />
                       <Label htmlFor="notes">Notes</Label>
