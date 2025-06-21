@@ -22,9 +22,9 @@ This document outlines the remaining critical tasks required to launch a functio
 
 ### 2. State Management & Data Fetching
 
-- [ ] **Implement Server State Management with React Query:**
-  - [ ] **Task:** Refactor data-fetching logic in components like `SessionsPage.tsx` and `StudySession.tsx` to use `useQuery` and `useMutation` from `@tanstack/react-query`.
-  - [ ] **Reason:** To replace manual `useEffect` and `useState` hooks for data fetching, which will provide better caching, automatic re-fetching, and a cleaner codebase.
+- [x] **Implement Server State Management with React Query:**
+  - [x] **Task:** Refactor data-fetching logic in components like `SessionsPage.tsx` and `StudySession.tsx` to use `useQuery` and `useMutation` from `@tanstack/react-query`.
+  - [x] **Reason:** To replace manual `useEffect` and `useState` hooks for data fetching, which will provide better caching, automatic re-fetching, and a cleaner codebase.
 
 ---
 

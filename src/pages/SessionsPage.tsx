@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/NavBar";
 import { Button } from "@/components/ui/button";
@@ -13,36 +13,41 @@ import { getSessions, createSession, deleteSession } from "@/services/sessionSer
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Trash } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function SessionsPage() {
-  const [sessions, setSessions] = useState<StudySession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: sessions = [], isLoading } = useQuery({
+    queryKey: ["sessions"],
+    queryFn: getSessions,
+  });
   const [newSessionTitle, setNewSessionTitle] = useState("");
   const [newSessionDescription, setNewSessionDescription] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const loadSessions = async () => {
-      try {
-        const data = await getSessions();
-        setSessions(data);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load study sessions",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const createSessionMutation = useMutation({
+    mutationFn: (data: Partial<StudySession>) => createSession(data),
+    onSuccess: (newSession) => {
+      queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) => [
+        ...old,
+        newSession,
+      ]);
+      setNewSessionTitle("");
+      setNewSessionDescription("");
+      setDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create session",
+        variant: "destructive",
+      });
+    },
+  });
 
-    loadSessions();
-  }, [toast]);
-
-  const handleCreateSession = async () => {
+  const handleCreateSession = () => {
     if (!newSessionTitle.trim()) {
       toast({
         title: "Error",
@@ -52,40 +57,31 @@ export default function SessionsPage() {
       return;
     }
 
-    try {
-      setLoading(true);
-      const newSession = await createSession({
-        title: newSessionTitle,
-        description: newSessionDescription,
-      });
-      setSessions([...sessions, newSession]);
-      setNewSessionTitle("");
-      setNewSessionDescription("");
-      setDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create session",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    createSessionMutation.mutate({
+      title: newSessionTitle,
+      description: newSessionDescription,
+    });
   };
 
-  const handleDeleteSession = async (id: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    
-    try {
-      await deleteSession(id);
-      setSessions(sessions.filter(session => session.id !== id));
-    } catch (error) {
+  const deleteSessionMutation = useMutation({
+    mutationFn: (id: string) => deleteSession(id),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) =>
+        old.filter((s) => s.id !== id)
+      );
+    },
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to delete session",
         variant: "destructive",
       });
-    }
+    },
+  });
+
+  const handleDeleteSession = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    deleteSessionMutation.mutate(id);
   };
 
   const formatDate = (dateString: string) => {
@@ -155,7 +151,7 @@ export default function SessionsPage() {
           </Dialog>
         </div>
         
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="border shadow-sm animate-pulse">
