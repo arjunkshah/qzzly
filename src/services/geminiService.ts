@@ -318,10 +318,7 @@ export async function generateFlashcards(
       for (const file of filesToUse) {
         if (file.content) {
           parts.push({
-            inline_data: {
-              mime_type: file.type,
-              data: file.content
-            }
+            text: file.content
           });
         }
       }
@@ -512,10 +509,7 @@ export async function generateQuiz(
       for (const file of filesToUse) {
         if (file.content) {
           parts.push({
-            inline_data: {
-              mime_type: file.type,
-              data: file.content
-            }
+            text: file.content
           });
         }
       }
@@ -837,12 +831,7 @@ Keep the response clean and well-formatted for easy reading.`;
                 role: "user",
                 parts: [
                   { text: prompt },
-                  { 
-                    inline_data: {
-                      mime_type: file.type,
-                  data: file.content
-                    }
-                  }
+                  { text: file.content }
                 ]
               }
             ],
