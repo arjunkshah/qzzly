@@ -778,6 +778,56 @@ Please provide a detailed response:`;
 }
 
 /**
+ * Generate a concise summary of provided text content
+ */
+export async function generateFileSummary(
+  fileName: string,
+  content: string,
+  sessionId?: string
+): Promise<string> {
+  try {
+    if (!content || content.length < 50) {
+      return "Unable to generate summary - insufficient text content extracted from PDF.";
+    }
+
+    const trimmed = content.length > 5000 ? content.substring(0, 5000) + "..." : content;
+
+    const prompt = `Please provide a concise summary of the following document content. Focus on the main topics, key concepts, and what a student could learn from this material:\n\nDocument: ${fileName}\n\nContent: ${trimmed}\n\nPlease provide a clear, educational summary regardless of the document format or structure.`;
+
+    const summary = await generateWithOpenAI(prompt, {
+      sessionId,
+      temperature: 0.3,
+      maxTokens: 200,
+      model: 'gpt-4'
+    });
+
+    return summary;
+  } catch (error) {
+    console.error("Error generating file summary:", error);
+    return "Unable to generate summary - AI processing error occurred.";
+  }
+}
+
+// Helpers for topic extraction
+function extractTopicsFromText(text: string): string[] {
+  const bulletMatches = text.match(/[-•*]\s*(.*?)(?=\n|$)/g) || [];
+  const numberedMatches = text.match(/\d+\.\s*(.*?)(?=\n|$)/g) || [];
+  const topics = [
+    ...bulletMatches.map(m => m.replace(/[-•*]\s*/, '').trim()),
+    ...numberedMatches.map(m => m.replace(/\d+\.\s*/, '').trim())
+  ];
+  return [...new Set(topics.filter(t => t.length > 3))].slice(0, 8);
+}
+
+function extractDefaultTopics(filename: string): string[] {
+  const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
+  const parts = nameWithoutExt.split(/[-_\s.]/);
+  const topics = parts.filter(p => p.length > 2).map(p => p.charAt(0).toUpperCase() + p.slice(1));
+  topics.push(nameWithoutExt);
+  return [...new Set(topics)];
+}
+
+/**
  * Ingest and summarize file content
  */
 export async function ingestAndSummarizeFile(
@@ -792,47 +842,16 @@ export async function ingestAndSummarizeFile(
       };
     }
 
-    const contentForSummary = file.content.length > 4000 
-      ? chunkText(file.content, 4000)[0] + "..."
-      : file.content;
+    addFileToSessionContext(sessionId, file);
 
-    const prompt = `Please provide a concise summary and extract up to 5 main topics from the following document content.
+    const summary = await generateFileSummary(file.name, file.content, sessionId);
+    const topics = extractTopicsFromText(summary);
 
-Document: ${file.name}
-Content: ${contentForSummary}
+    return {
+      summary,
+      topics: topics.length > 0 ? topics : extractDefaultTopics(file.name)
+    };
 
-Return the response as a JSON object with this exact format:
-{
-  "summary": "A concise summary of the document.",
-  "topics": ["Topic 1", "Topic 2", "Topic 3"]
-}
-
-Only return the JSON object, no additional text.`;
-
-    const response = await generateWithOpenAI(prompt, {
-      sessionId,
-      temperature: 0.3,
-      maxTokens: 400,
-      model: 'gpt-4'
-    });
-
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          summary: parsed.summary || "Summary could not be generated.",
-          topics: parsed.topics || [file.name.replace(/\.[^/.]+$/, "")]
-        };
-      }
-      throw new Error("No JSON object found in response");
-    } catch (e) {
-      return {
-        summary: "Failed to parse summary from AI response.",
-        topics: [file.name.replace(/\.[^/.]+$/, "")]
-      };
-    }
-    
   } catch (error) {
     console.error("Error ingesting file:", error);
     return {

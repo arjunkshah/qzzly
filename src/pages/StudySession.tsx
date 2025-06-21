@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/NavBar";
 import { 
   Tabs, 
@@ -8,7 +8,6 @@ import {
   TabsTrigger
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { 
   getSessionById, 
@@ -30,51 +29,43 @@ import { ChatComponent } from "@/components/study/ChatComponent";
 import { FilesComponent } from "@/components/study/FilesComponent";
 import { LearnComponent } from "@/components/study/LearnComponent";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
+import { useQuery } from "@tanstack/react-query";
 
 export default function StudySession() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [session, setSession] = useState<StudySessionType | null>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("files");
   const mainRef = useScrollAnimation<HTMLElement>();
 
-  useEffect(() => {
-    const loadSession = async () => {
-      if (!id) return;
-      
-      try {
-        setLoading(true);
-        const data = await getSessionById(id);
-        
-        if (!data) {
-          toast({
-            title: "Error",
-            description: "Study session not found",
-            variant: "destructive",
-          });
-          navigate('/sessions');
-          return;
-        }
-        
-        setSession(data);
-      } catch (error) {
+  const { isLoading } = useQuery({
+    queryKey: ["session", id],
+    queryFn: () => getSessionById(id ?? ""),
+    enabled: !!id,
+    onSuccess: (data) => {
+      if (!data) {
         toast({
           title: "Error",
-          description: "Failed to load study session",
+          description: "Study session not found",
           variant: "destructive",
         });
         navigate('/sessions');
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
-    
-    loadSession();
-  }, [id, navigate, toast]);
+      setSession(data);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to load study session",
+        variant: "destructive",
+      });
+      navigate('/sessions');
+    }
+  });
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar />

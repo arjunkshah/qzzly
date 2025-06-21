@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileItem } from "@/types/session";
 import { addFileToSession } from "@/services/sessionService";
-import { generateWithOpenAI } from "@/services/openaiService";
+import { generateFileSummary as openaiGenerateFileSummary } from "@/services/openaiService";
 import { useToast } from "@/hooks/use-toast";
 import { File, Upload, Download, Trash, FileText } from "lucide-react";
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
@@ -23,26 +23,7 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
 
   const generateFileSummary = async (fileName: string, fileContent: string): Promise<string> => {
     try {
-      // Ensure we have meaningful content to summarize
-      if (!fileContent || fileContent.length < 50) {
-        return "Unable to generate summary - insufficient text content extracted from PDF.";
-      }
-
-      // Take a substantial portion of the content for analysis
-      const contentForSummary = fileContent.length > 5000 
-        ? fileContent.substring(0, 5000) + "..."
-        : fileContent;
-
-      const prompt = `Please provide a concise summary of the following document content. Focus on the main topics, key concepts, and what a student could learn from this material:
-
-Document: ${fileName}
-
-Content: ${contentForSummary}
-
-Please provide a clear, educational summary regardless of the document format or structure.`;
-      
-      const summary = await generateWithOpenAI(prompt, { temperature: 0.3, maxTokens: 200, model: 'gpt-4' });
-      return summary;
+      return await openaiGenerateFileSummary(fileName, fileContent, sessionId);
     } catch (error) {
       console.error("Error generating file summary:", error);
       return "Unable to generate summary - AI processing error occurred.";

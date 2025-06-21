@@ -22,33 +22,33 @@ This document outlines the remaining critical tasks required to launch a functio
 
 ### 2. State Management & Data Fetching
 
-- [ ] **Implement Server State Management with React Query:**
-  - [ ] **Task:** Refactor data-fetching logic in components like `SessionsPage.tsx` and `StudySession.tsx` to use `useQuery` and `useMutation` from `@tanstack/react-query`.
-  - [ ] **Reason:** To replace manual `useEffect` and `useState` hooks for data fetching, which will provide better caching, automatic re-fetching, and a cleaner codebase.
+- [x] **Implement Server State Management with React Query:**
+  - [x] **Task:** Refactor data-fetching logic in components like `SessionsPage.tsx` and `StudySession.tsx` to use `useQuery` and `useMutation` from `@tanstack/react-query`.
+  - [x] **Reason:** To replace manual `useEffect` and `useState` hooks for data fetching, which will provide better caching, automatic re-fetching, and a cleaner codebase.
 
 ---
 
 ### 3. User Authentication (MVP)
 
-- [ ] **Verify Core Authentication Flow:**
-  - [ ] **Task:** Ensure the existing signup, login, and logout functionalities are working correctly and are robust.
-  - [ ] **Reason:** A working authentication system is essential for a multi-user MVP.
-  
-- [ ] **Implement Protected Routes:**
-  - [ ] **Task:** Create and apply a mechanism (e.g., a higher-order component or a router check) to protect all session-related pages from unauthenticated access.
-  - [ ] **Reason:** To ensure user data is secure and accessible only after logging in.
+- [x] **Verify Core Authentication Flow:**
+  - [x] **Task:** Ensure the existing signup, login, and logout functionalities are working correctly and are robust.
+  - [x] **Reason:** A working authentication system is essential for a multi-user MVP.
+
+- [x] **Implement Protected Routes:**
+  - [x] **Task:** Create and apply a mechanism (e.g., a higher-order component or a router check) to protect all session-related pages from unauthenticated access.
+  - [x] **Reason:** To ensure user data is secure and accessible only after logging in.
 
 ---
 
 ### 4. Testing & Deployment
 
-- [ ] **Write Basic Integration Tests:**
-  - [ ] **Task:** Create tests for the most critical user flow: uploading a PDF, generating flashcards, and starting a quiz.
-  - [ ] **Reason:** To ensure the core application workflow is stable and prevent regressions.
+- [x] **Write Basic Integration Tests:**
+  - [x] **Task:** Create tests for the most critical user flow: uploading a PDF, generating flashcards, and starting a quiz.
+  - [x] **Reason:** To ensure the core application workflow is stable and prevent regressions.
 
-- [ ] **Prepare for Deployment:**
-  - [ ] **Task:** Create a production build and test it locally. Prepare deployment configurations for a target platform (e.g., Vercel, Netlify).
-  - [ ] **Reason:** To ensure the application can be successfully deployed and made available to users.
+- [x] **Prepare for Deployment:**
+  - [x] **Task:** Create a production build and test it locally. Prepare deployment configurations for a target platform (e.g., Vercel, Netlify).
+  - [x] **Reason:** To ensure the application can be successfully deployed and made available to users.
 
 ---
 ## Post-MVP / Future Work
