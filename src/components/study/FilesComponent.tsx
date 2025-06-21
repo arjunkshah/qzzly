@@ -7,7 +7,6 @@ import { generateWithGemini } from "@/services/geminiService";
 import { useToast } from "@/hooks/use-toast";
 import { File, Upload, Download, Trash, FileText } from "lucide-react";
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 interface FilesComponentProps {
   sessionId: string;
@@ -53,7 +52,7 @@ Please provide a clear, educational summary regardless of the document format or
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
       // Set up the worker
-      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
       
       // Convert file to ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
