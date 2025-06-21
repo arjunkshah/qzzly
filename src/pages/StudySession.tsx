@@ -29,6 +29,7 @@ import { QuizComponent } from "@/components/study/QuizComponent";
 import { ChatComponent } from "@/components/study/ChatComponent";
 import { FilesComponent } from "@/components/study/FilesComponent";
 import { LearnComponent } from "@/components/study/LearnComponent";
+import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 export default function StudySession() {
   const { id } = useParams<{ id: string }>();
@@ -37,6 +38,7 @@ export default function StudySession() {
   const [session, setSession] = useState<StudySessionType | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("files");
+  const mainRef = useScrollAnimation<HTMLElement>();
 
   useEffect(() => {
     const loadSession = async () => {
@@ -109,7 +111,7 @@ export default function StudySession() {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       
-      <div className="container mx-auto px-4 py-6">
+      <div ref={mainRef} className="container mx-auto px-4 py-6">
         {/* Header with back button */}
         <div className="mb-6">
           <Button 

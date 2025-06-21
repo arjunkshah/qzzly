@@ -4,12 +4,14 @@ import { Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { SignupDialog } from "@/components/auth/SignupDialog";
+import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 const CTASection = () => {
   const { isAuthenticated } = useAuth();
+  const sectionRef = useScrollAnimation<HTMLElement>();
 
   return (
-    <section className="py-24 bg-white">
+    <section ref={sectionRef} className="py-24 bg-white">
       <div className="container mx-auto px-4 md:px-6">
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-3xl p-10 md:p-16 shadow-2xl overflow-hidden relative">
           {/* Background pattern */}

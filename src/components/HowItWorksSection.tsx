@@ -1,7 +1,10 @@
 
+import { useScrollAnimation } from "@/hooks/use-scroll-animation";
+
 const HowItWorksSection = () => {
+  const sectionRef = useScrollAnimation<HTMLElement>();
   return (
-    <section id="how-it-works" className="py-24 bg-gray-50">
+    <section ref={sectionRef} id="how-it-works" className="py-24 bg-gray-50">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-20">
           <span className="text-purple-600 font-semibold text-sm uppercase tracking-wider mb-2 block">Process</span>
