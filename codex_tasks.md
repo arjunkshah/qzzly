@@ -30,13 +30,13 @@ This document outlines the remaining critical tasks required to launch a functio
 
 ### 3. User Authentication (MVP)
 
-- [ ] **Verify Core Authentication Flow:**
-  - [ ] **Task:** Ensure the existing signup, login, and logout functionalities are working correctly and are robust.
-  - [ ] **Reason:** A working authentication system is essential for a multi-user MVP.
-  
-- [ ] **Implement Protected Routes:**
-  - [ ] **Task:** Create and apply a mechanism (e.g., a higher-order component or a router check) to protect all session-related pages from unauthenticated access.
-  - [ ] **Reason:** To ensure user data is secure and accessible only after logging in.
+- [x] **Verify Core Authentication Flow:**
+  - [x] **Task:** Ensure the existing signup, login, and logout functionalities are working correctly and are robust.
+  - [x] **Reason:** A working authentication system is essential for a multi-user MVP.
+
+- [x] **Implement Protected Routes:**
+  - [x] **Task:** Create and apply a mechanism (e.g., a higher-order component or a router check) to protect all session-related pages from unauthenticated access.
+  - [x] **Reason:** To ensure user data is secure and accessible only after logging in.
 
 ---
 
