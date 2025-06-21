@@ -1,322 +1,351 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { FileItem } from "@/types/session";
-import { addFileToSession, getFileSummaries, removeFileFromSession } from "@/services/sessionService";
+import { addFileToSession } from "@/services/sessionService";
+import { generateWithGemini } from "@/services/geminiService";
 import { useToast } from "@/hooks/use-toast";
-import { FileIcon, TrashIcon, EyeOpenIcon } from "@radix-ui/react-icons";
-import { Eye } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { extractTextFromPDF, chunkText } from '@/lib/utils';
+import { File, Upload, Download, Trash, FileText } from "lucide-react";
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 interface FilesComponentProps {
   sessionId: string;
   files: FileItem[];
   onFileAdded: (file: FileItem) => void;
-  onFileRemoved: (fileId: string) => void;
 }
 
-export function FilesComponent({ sessionId, files, onFileAdded, onFileRemoved }: FilesComponentProps) {
+export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponentProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [fileSummaries, setFileSummaries] = useState<Record<string, any>>({});
-  const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set());
-  const [showSummaryDialog, setShowSummaryDialog] = useState(false);
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [generatingSummaries, setGeneratingSummaries] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Load file summaries when component mounts or files change
-  useEffect(() => {
-    if (sessionId && files.length > 0) {
-      loadFileSummaries();
-    }
-  }, [sessionId, files]);
-
-  const loadFileSummaries = async () => {
+  const generateFileSummary = async (fileName: string, fileContent: string): Promise<string> => {
     try {
-      const summaries = await getFileSummaries(sessionId);
-      setFileSummaries(summaries);
+      // Ensure we have meaningful content to summarize
+      if (!fileContent || fileContent.length < 50) {
+        return "Unable to generate summary - insufficient text content extracted from PDF.";
+      }
+
+      // Take a substantial portion of the content for analysis
+      const contentForSummary = fileContent.length > 5000 
+        ? fileContent.substring(0, 5000) + "..."
+        : fileContent;
+
+      const prompt = `Please provide a concise summary of the following document content. Focus on the main topics, key concepts, and what a student could learn from this material:
+
+Document: ${fileName}
+
+Content: ${contentForSummary}
+
+Please provide a clear, educational summary regardless of the document format or structure.`;
+      
+      const summary = await generateWithGemini(prompt, { temperature: 0.3, maxOutputTokens: 200 });
+      return summary;
     } catch (error) {
-      console.error("Error loading file summaries:", error);
+      console.error("Error generating file summary:", error);
+      return "Unable to generate summary - AI processing error occurred.";
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    try {
+      // Set up the worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+      
+      // Convert file to ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // Load the PDF document
+      const pdf = await pdfjsLib.getDocument({ 
+        data: arrayBuffer,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true
+      }).promise;
+      
+      console.log(`PDF loaded successfully. Pages: ${pdf.numPages}`);
+      
+      let fullText = '';
+      
+      // Extract text from each page
+      for (let i = 1; i <= pdf.numPages; i++) {
+        try {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          
+          // Extract text items and join them with spaces
+          const pageText = textContent.items
+            .filter((item: any) => item.str && item.str.trim())
+            .map((item: any) => item.str.trim())
+            .join(' ');
+          
+          if (pageText.trim()) {
+            fullText += pageText + '\n\n';
+          }
+          
+          console.log(`Page ${i}: extracted ${pageText.length} characters`);
+        } catch (pageError) {
+          console.warn(`Error extracting text from page ${i}:`, pageError);
+          continue;
+        }
+      }
+      
+      // Clean up the text
+      const cleanedText = fullText
+        .replace(/\s+/g, ' ')
+        .replace(/\n\s*\n/g, '\n')
+        .trim();
+      
+      console.log(`Final extraction: ${cleanedText.length} characters from ${file.name}`);
+      console.log(`First 500 characters: "${cleanedText.substring(0, 500)}"`);
+      
+      if (cleanedText.length === 0) {
+        return `This PDF appears to contain no extractable text. File: ${file.name} (${(file.size / 1024).toFixed(1)}KB). This might be an image-based PDF or contain only visual elements.`;
+      }
+      
+      if (cleanedText.length < 100) {
+        return `Limited text extracted from ${file.name}: "${cleanedText}". This PDF may contain mostly images or non-text content. File size: ${(file.size / 1024).toFixed(1)}KB.`;
+      }
+      
+      return cleanedText;
+    } catch (error) {
+      console.error("Error extracting PDF text:", error);
+      return `Failed to extract text from ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}. File size: ${(file.size / 1024).toFixed(1)}KB. This may be an encrypted, corrupted, or image-only PDF.`;
+    }
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
     
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    await handleFiles(droppedFiles);
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
-      await handleFiles(selectedFiles);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload(e.dataTransfer.files);
     }
   };
 
-  const handleFiles = async (files: File[]) => {
-    for (const file of files) {
-      if (file.type !== 'application/pdf') {
+  const handleFileUpload = async (fileList: FileList) => {
+    if (fileList.length === 0) return;
+    
+    setUploading(true);
+    try {
+      // Process each file
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        
+        if (file.type !== "application/pdf") {
           toast({
-          title: "Invalid file type",
-          description: "Please upload PDF files only.",
-          variant: "destructive"
+            title: "Error",
+            description: "Only PDF files are supported",
+            variant: "destructive",
           });
           continue;
         }
         
-      const fileId = `file_${Date.now()}`;
-      setProcessingFiles(prev => new Set(prev).add(fileId));
-
-        try {
-        // Create a blob URL for the file
-        const blobUrl = URL.createObjectURL(file);
-        console.log(`Created blob URL for ${file.name}: ${blobUrl}`);
-          
-        // Extract text from PDF
-        const fullText = await extractTextFromPDF(file);
-        // Chunk the text for large files
-        const textChunks = chunkText(fullText, 4000); // 4000 chars per chunk
-
-        // Read the file content as base64 (for Gemini inline_data if needed)
-        const arrayBuffer = await file.arrayBuffer();
-        const base64Content = btoa(
-          new Uint8Array(arrayBuffer)
-            .reduce((data, byte) => data + String.fromCharCode(byte), '')
-        );
-
-        // Create file object with content and text chunks
-          const newFile: FileItem = {
-          id: fileId,
-            name: file.name,
-          url: blobUrl,
-            type: file.type,
+        console.log(`Processing file: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+        
+        // Extract text content from PDF
+        const extractedContent = await extractTextFromPDF(file);
+        console.log("Extracted content length:", extractedContent.length);
+        
+        const newFile: FileItem = {
+          id: `file_${Date.now()}_${i}`,
+          name: file.name,
+          url: URL.createObjectURL(file),
+          type: file.type,
           uploadedAt: new Date().toISOString(),
-          content: base64Content,
-          // @ts-ignore
-          textChunks: textChunks, // Add textChunks for later Gemini processing
-          extractedText: fullText // Store full extracted text for summary
-          };
-          
-          // Add file to session
-        await addFileToSession(sessionId, newFile);
-
-        // Create a file object without content for the UI
-        const fileForUI = {
-          ...newFile,
-          content: undefined,
-          textChunks: undefined
+          content: extractedContent
         };
-
-        onFileAdded(fileForUI);
+        
+        await addFileToSession(sessionId, newFile);
+        onFileAdded(newFile);
+        
+        // Generate summary
+        setGeneratingSummaries(prev => [...prev, newFile.id]);
+        
+        try {
+          console.log(`Generating summary for ${file.name} with ${extractedContent.length} characters`);
+          const summary = await generateFileSummary(file.name, extractedContent);
+          console.log("Generated summary:", summary);
           
-          console.log(`File ${file.name} added successfully`);
+          // Update the file with the summary
+          const updatedFile = { ...newFile, summary };
+          onFileAdded(updatedFile);
           
-        // Wait a bit for processing to complete, then reload summaries
-        setTimeout(() => {
-          loadFileSummaries();
-          setProcessingFiles(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(fileId);
-            return newSet;
-          });
-        }, 3000);
-
-      } catch (error) {
-        console.error('Error adding file:', error);
-        setProcessingFiles(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(fileId);
-          return newSet;
-        });
           toast({
-            title: "Error",
-          description: `Failed to add ${file.name}. Please try again.`,
-          variant: "destructive"
+            title: "File uploaded and analyzed",
+            description: `${file.name} has been uploaded and summarized successfully.`
           });
+        } catch (summaryError) {
+          console.error("Summary generation failed:", summaryError);
+          toast({
+            title: "File uploaded",
+            description: `${file.name} uploaded but summary generation failed.`
+          });
+        } finally {
+          setGeneratingSummaries(prev => prev.filter(id => id !== newFile.id));
         }
       }
-  };
-
-  const handleRemoveFile = async (fileId: string) => {
-    try {
-      await removeFileFromSession(sessionId, fileId);
-      onFileRemoved(fileId);
     } catch (error) {
-      console.error('Error removing file:', error);
+      console.error("File upload error:", error);
       toast({
         title: "Error",
-        description: `Failed to remove ${fileId}. Please try again.`,
-        variant: "destructive"
+        description: "Failed to upload file",
+        variant: "destructive",
       });
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  const openSummary = (fileId: string) => {
-    setSelectedFileId(fileId);
-    setShowSummaryDialog(true);
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
   };
 
-  const viewFile = (file: FileItem) => {
-    if (file.url && file.url.startsWith('blob:')) {
-      // Open the blob URL in a new tab
-      window.open(file.url, '_blank');
-    } else {
-      toast({
-        title: "Error",
-        description: "File not available for viewing",
-        variant: "destructive"
-      });
-    }
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(date);
   };
-
-  const selectedFile = files.find(f => f.id === selectedFileId);
-  const selectedSummary = selectedFileId ? fileSummaries[selectedFileId] : null;
 
   return (
-    <div className="space-y-4">
-      <div
-        className={`border-2 border-dashed rounded-lg p-6 text-center ${
-          isDragging ? 'border-primary bg-primary/10' : 'border-muted-foreground/25'
+    <div>
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold mb-2">Study Materials</h2>
+        <p className="text-gray-600 mb-4">
+          Upload your PDF notes and study materials for AI analysis. We'll extract the text content and generate summaries.
+        </p>
+        
+        {/* File upload area */}
+        <div
+          className={`upload-area rounded-lg p-8 text-center cursor-pointer mb-6 border-2 border-dashed ${
+            isDragging ? "border-purple-500 bg-purple-50" : "border-gray-300"
           }`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleFileDrop}
+          onClick={handleBrowseClick}
+        >
+          <Upload className="w-12 h-12 mx-auto text-purple-500 mb-3" />
+          <p className="text-gray-600 mb-2">Drag & drop your PDF files here</p>
+          <p className="text-gray-400 text-sm">or</p>
+          <Button 
+            variant="outline" 
+            className="mt-2 border-purple-300 text-purple-600 hover:bg-purple-50"
+          >
+            Browse files
+          </Button>
           <input
             type="file"
             ref={fileInputRef}
-          onChange={handleFileSelect}
-          accept=".pdf"
             className="hidden"
+            accept=".pdf"
             multiple
-        />
-        <Button
-          variant="outline"
-          onClick={() => fileInputRef.current?.click()}
-          className="mb-2"
-        >
-          <FileIcon className="mr-2 h-4 w-4" />
-          Upload PDF
-        </Button>
-        <p className="text-sm text-muted-foreground">
-          Drag and drop PDF files here, or click to select files
-        </p>
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleFileUpload(e.target.files);
+              }
+            }}
+          />
         </div>
         
-      {files.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium">Uploaded Files</h3>
+        {uploading && (
+          <div className="flex items-center justify-center bg-purple-50 rounded-lg p-4 mb-6">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-purple-500 mr-3"></div>
+            <span>Uploading and analyzing files...</span>
+          </div>
+        )}
+        
+        {/* File list */}
+        {files.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4">
             {files.map((file) => (
-            <Card key={file.id} className="p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <FileIcon className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{file.name}</span>
-                    <div className="flex items-center space-x-2 mt-1">
-                      {processingFiles.has(file.id) && (
-                        <Badge variant="secondary" className="text-xs">
-                          Processing...
-                        </Badge>
-                      )}
-                      {fileSummaries[file.id] && (
-                        <Badge variant="outline" className="text-xs cursor-pointer" onClick={() => openSummary(file.id)}>
-                          Summary Available
-                        </Badge>
+              <Card key={file.id} className="border">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-purple-100 p-3 rounded-lg flex-shrink-0">
+                      <File className="h-6 w-6 text-purple-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-medium text-gray-900 truncate" title={file.name}>
+                            {file.name}
+                          </h3>
+                          <p className="text-gray-500 text-xs">
+                            Uploaded {formatDate(file.uploadedAt)}
+                          </p>
+                        </div>
+                        <div className="flex space-x-2 ml-4">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                            onClick={() => window.open(file.url, '_blank')}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* AI Summary Section */}
+                      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-700">AI Summary</span>
+                        </div>
+                        
+                        {generatingSummaries.includes(file.id) ? (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-blue-500"></div>
+                            <span>Generating summary...</span>
+                          </div>
+                        ) : file.summary ? (
+                          <p className="text-sm text-gray-700">{file.summary}</p>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">No summary available</p>
+                        )}
+                      </div>
+                      
+                      {/* Content Preview (for debugging) */}
+                      {file.content && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                            View extracted content ({file.content.length} characters)
+                          </summary>
+                          <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 max-h-32 overflow-y-auto">
+                            {file.content.substring(0, 1000)}{file.content.length > 1000 ? "..." : ""}
+                          </div>
+                        </details>
                       )}
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => viewFile(file)}
-                    title="View PDF"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  {fileSummaries[file.id] && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                      onClick={() => openSummary(file.id)}
-                      title="View Summary"
-                      >
-                      <EyeOpenIcon className="h-4 w-4" />
-                      </Button>
-                  )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                    onClick={() => handleRemoveFile(file.id)}
-                    title="Remove File"
-                      >
-                    <TrashIcon className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
+                </CardContent>
               </Card>
             ))}
           </div>
+        ) : (
+          <div className="text-center py-10 border rounded-lg bg-gray-50">
+            <File className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+            <h3 className="text-lg font-medium text-gray-900">No files yet</h3>
+            <p className="text-gray-500 mt-1">
+              Upload your first PDF to get started
+            </p>
+          </div>
         )}
-
-      {/* File Summary Dialog */}
-      <Dialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedFile?.name} - Summary</DialogTitle>
-            <DialogDescription>
-              AI-generated summary and key topics from this document
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedSummary ? (
-            <div className="space-y-4 mt-4">
-                          <div>
-                <div className="bg-muted p-4 rounded-lg">
-                  <div className="text-sm whitespace-pre-line leading-relaxed">{selectedSummary.summary}</div>
-                      </div>
-                    </div>
-                    
-              {selectedSummary.topics && selectedSummary.topics.length > 0 && (
-                      <div>
-                  <h4 className="text-sm font-semibold mb-2">Key Topics:</h4>
-                        <div className="flex flex-wrap gap-2">
-                    {selectedSummary.topics.map((topic: string, i: number) => (
-                      <Badge key={i} variant="secondary" className="text-xs">{topic}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-            <div className="text-center p-8">
-              <p className="text-muted-foreground">No summary available for this file yet.</p>
-                  </div>
-                )}
-        </DialogContent>
-      </Dialog>
+      </div>
     </div>
   );
 }
