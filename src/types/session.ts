@@ -1,4 +1,3 @@
-
 export interface StudySession {
   id: string;
   title: string;
@@ -8,6 +7,7 @@ export interface StudySession {
   files: FileItem[];
   flashcards: Flashcard[];
   quizzes: Quiz[];
+  studyMaterials?: StudyMaterial[];
 }
 
 export interface FileItem {
@@ -16,6 +16,10 @@ export interface FileItem {
   url: string;
   type: string;
   uploadedAt: string;
+  content?: string;
+  binaryData?: string; // Base64 encoded file data
+  textChunks?: string[]; // Chunked text extracted from PDF for Gemini
+  extractedText?: string; // Full extracted text for summary generation
 }
 
 export interface Flashcard {
@@ -44,4 +48,13 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+}
+
+export interface StudyMaterial {
+  id: string;
+  title: string;
+  content: string;
+  format: 'notes' | 'outline' | 'summary';
+  complexity: string;
+  createdAt: string;
 }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Quiz, Question, FileItem, Flashcard } from "@/types/session";
-import { addQuiz, generateContentWithGemini, getSessionById } from "@/services/sessionService";
-import { Check, Plus, Sparkles, Settings } from "lucide-react";
+import { addQuiz, generateContentWithOpenAI, getSessionById } from "@/services/sessionService";
+import { Check, Plus, Sparkles, Settings, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -40,7 +39,8 @@ export function QuizComponent({
     questionCount: 5,
     difficulty: "medium",
     topic: "",
-    showExplanations: true
+    showExplanations: true,
+    questionTypes: ["multiple-choice"] as string[]
   });
   const { toast } = useToast();
 
@@ -71,14 +71,21 @@ export function QuizComponent({
   const nextQuestion = () => {
     if (!activeQuiz) return;
     
-    setSelectedAnswer(null);
-    setIsAnswered(false);
-    
     if (currentQuestionIndex < activeQuiz.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setSelectedAnswer(null);
+      setIsAnswered(false);
     } else {
       setQuizCompleted(true);
     }
+  };
+
+  const goToPreviousQuestion = () => {
+    if (!activeQuiz || currentQuestionIndex === 0) return;
+    
+    setCurrentQuestionIndex(currentQuestionIndex - 1);
+    setSelectedAnswer(null);
+    setIsAnswered(false);
   };
 
   const handleGenerateQuiz = async () => {
@@ -122,10 +129,17 @@ export function QuizComponent({
         prompt += " with detailed explanations for each correct answer";
       }
       
-      const generatedQuiz = await generateContentWithGemini(
+      const generatedQuiz = await generateContentWithOpenAI(
         prompt,
         "quiz",
-        sessionId
+        sessionId,
+        {
+          questionCount: quizSettings.questionCount,
+          difficulty: quizSettings.difficulty,
+          topic: topic,
+          includeExplanations: quizSettings.showExplanations,
+          questionTypes: quizSettings.questionTypes
+        }
       );
       
       // Make sure we have the right number of questions (API might return more or less)
@@ -215,7 +229,7 @@ export function QuizComponent({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="topic">Specific Topic (optional)</Label>
+                  <Label>Specific Topic (optional)</Label>
                   <Input
                     id="topic"
                     placeholder="Leave blank to generate from uploaded files"
@@ -224,6 +238,54 @@ export function QuizComponent({
                   />
                   <p className="text-xs text-gray-500">
                     If left blank, quiz will be generated based on your study materials
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Question Types</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="multiple-choice" 
+                        checked={quizSettings.questionTypes.includes("multiple-choice")}
+                        onCheckedChange={(checked) => {
+                          const types = checked 
+                            ? [...quizSettings.questionTypes, "multiple-choice"]
+                            : quizSettings.questionTypes.filter(t => t !== "multiple-choice");
+                          setQuizSettings({...quizSettings, questionTypes: types.length > 0 ? types : ["multiple-choice"]});
+                        }}
+                      />
+                      <Label htmlFor="multiple-choice">Multiple Choice</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="true-false" 
+                        checked={quizSettings.questionTypes.includes("true-false")}
+                        onCheckedChange={(checked) => {
+                          const types = checked 
+                            ? [...quizSettings.questionTypes, "true-false"]
+                            : quizSettings.questionTypes.filter(t => t !== "true-false");
+                          setQuizSettings({...quizSettings, questionTypes: types});
+                        }}
+                      />
+                      <Label htmlFor="true-false">True/False</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="short-answer" 
+                        checked={quizSettings.questionTypes.includes("short-answer")}
+                        onCheckedChange={(checked) => {
+                          const types = checked 
+                            ? [...quizSettings.questionTypes, "short-answer"]
+                            : quizSettings.questionTypes.filter(t => t !== "short-answer");
+                          setQuizSettings({...quizSettings, questionTypes: types});
+                        }}
+                      />
+                      <Label htmlFor="short-answer">Short Answer</Label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Select the types of questions you want in your quiz
                   </p>
                 </div>
                 
@@ -385,18 +447,33 @@ export function QuizComponent({
                 className="space-y-3"
                 disabled={isAnswered}
               >
-                {activeQuiz.questions[currentQuestionIndex].options.map((option, index) => (
+                {activeQuiz.questions[currentQuestionIndex].options.map((option, index) => {
+                  const isCorrectAnswer = index === activeQuiz.questions[currentQuestionIndex].correctAnswer;
+                  const isSelectedAnswer = selectedAnswer === index;
+                  const isUserCorrect = isAnswered && isSelectedAnswer && isCorrectAnswer;
+                  const isUserIncorrect = isAnswered && isSelectedAnswer && !isCorrectAnswer;
+                  const shouldShowCorrect = isAnswered && isCorrectAnswer;
+                  
+                  let optionClasses = "flex items-center space-x-3 p-4 rounded-md border ";
+                  
+                  if (isAnswered) {
+                    if (shouldShowCorrect) {
+                      optionClasses += "border-green-500 bg-green-50";
+                    } else if (isUserIncorrect) {
+                      optionClasses += "border-red-500 bg-red-50";
+                    } else {
+                      optionClasses += "border-gray-200";
+                    }
+                  } else if (isSelectedAnswer) {
+                    optionClasses += "border-purple-500 bg-purple-50";
+                  } else {
+                    optionClasses += "border-gray-200 hover:border-gray-300";
+                  }
+                  
+                  return (
                   <div 
                     key={index} 
-                    className={`flex items-center space-x-3 p-4 rounded-md border ${
-                      isAnswered && index === activeQuiz.questions[currentQuestionIndex].correctAnswer 
-                        ? "border-green-500 bg-green-50" 
-                        : isAnswered && selectedAnswer === index 
-                        ? "border-red-500 bg-red-50" 
-                        : selectedAnswer === index 
-                        ? "border-purple-500" 
-                        : ""
-                    }`}
+                      className={optionClasses}
                   >
                     <RadioGroupItem 
                       value={index.toString()} 
@@ -408,8 +485,15 @@ export function QuizComponent({
                     >
                       {option}
                     </Label>
+                      {isAnswered && isCorrectAnswer && (
+                        <Check className="h-5 w-5 text-green-600" />
+                      )}
+                      {isAnswered && isUserIncorrect && (
+                        <X className="h-5 w-5 text-red-600" />
+                      )}
                   </div>
-                ))}
+                  );
+                })}
               </RadioGroup>
             </div>
             
@@ -438,11 +522,7 @@ export function QuizComponent({
               <Button 
                 variant="outline" 
                 disabled={currentQuestionIndex === 0 || !isAnswered}
-                onClick={() => {
-                  setCurrentQuestionIndex(currentQuestionIndex - 1);
-                  setSelectedAnswer(null);
-                  setIsAnswered(false);
-                }}
+                onClick={goToPreviousQuestion}
               >
                 Previous
               </Button>

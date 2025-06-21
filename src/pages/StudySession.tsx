@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { NavBar } from "@/components/NavBar";
@@ -16,7 +15,7 @@ import {
   addChatMessage, 
   getChatMessages, 
   addFileToSession, 
-  generateContentWithGemini, 
+  generateContentWithOpenAI, 
   addFlashcard, 
   toggleFlashcardMastery, 
   addQuiz
@@ -161,6 +160,12 @@ export default function StudySession() {
                     files: [...session.files, file]
                   });
                 }} 
+                onFileRemoved={(fileId) => {
+                  setSession({
+                    ...session,
+                    files: session.files.filter(file => file.id !== fileId)
+                  });
+                }}
               />
             </TabsContent>
             
@@ -170,18 +175,24 @@ export default function StudySession() {
                 flashcards={session.flashcards}
                 files={session.files}
                 onFlashcardAdded={(flashcard) => {
-                  setSession({
-                    ...session,
-                    flashcards: [...session.flashcards, { ...flashcard, id: `fc_${Date.now()}`, mastered: false }]
-                  });
+                  setSession(prevSession => ({
+                    ...prevSession,
+                    flashcards: [...prevSession.flashcards, flashcard]
+                  }));
+                }}
+                onFlashcardsAdded={(flashcards) => {
+                  setSession(prevSession => ({
+                    ...prevSession,
+                    flashcards: [...prevSession.flashcards, ...flashcards]
+                  }));
                 }}
                 onMasteryToggled={(id, mastered) => {
-                  setSession({
-                    ...session,
-                    flashcards: session.flashcards.map(card => 
+                  setSession(prevSession => ({
+                    ...prevSession,
+                    flashcards: prevSession.flashcards.map(card => 
                       card.id === id ? { ...card, mastered: !card.mastered } : card
                     )
-                  });
+                  }));
                 }}
               />
             </TabsContent>
@@ -205,6 +216,8 @@ export default function StudySession() {
               <LearnComponent 
                 sessionId={session.id}
                 flashcards={session.flashcards}
+                studyMaterials={session.studyMaterials || []}
+                files={session.files}
               />
             </TabsContent>
             

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard, FileItem } from "@/types/session";
-import { addFlashcard, toggleFlashcardMastery, generateContentWithGemini, getSessionById, updateFlashcard } from "@/services/sessionService";
+import { addFlashcard, toggleFlashcardMastery, generateContentWithOpenAI, getSessionById, updateFlashcard, addFlashcards } from "@/services/sessionService";
 import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +17,7 @@ interface FlashcardComponentProps {
   flashcards: Flashcard[];
   files?: FileItem[];
   onFlashcardAdded: (flashcard: Flashcard) => void;
+  onFlashcardsAdded?: (flashcards: Flashcard[]) => void;
   onMasteryToggled: (id: string, mastered: boolean) => void;
 }
 
@@ -26,6 +26,7 @@ export function FlashcardComponent({
   flashcards, 
   files = [],
   onFlashcardAdded, 
+  onFlashcardsAdded,
   onMasteryToggled 
 }: FlashcardComponentProps) {
   const [front, setFront] = useState("");
@@ -157,9 +158,16 @@ export function FlashcardComponent({
       const count = generationOptions.count;
       const complexity = generationOptions.complexity;
       
-      if (files.length > 0) {
-        // Generate flashcards based on file content
-        const fileNames = files.map(file => file.name.replace('.pdf', '')).join(", ");
+      // Use textChunks if available for large file processing
+      let filesToUse = files;
+      if (files.length > 0 && files[0].textChunks && files[0].textChunks.length > 0) {
+        // Use the chunked text for Gemini
+        filesToUse = files;
+      }
+
+      if (filesToUse.length > 0) {
+        // Generate flashcards based on file content (chunked if available)
+        const fileNames = filesToUse.map(file => file.name.replace('.pdf', '')).join(", ");
         prompt = `Generate ${count} educational flashcards about ${fileNames}`;
       } else if (flashcards.length > 0) {
         // Generate similar flashcards based on existing ones
@@ -170,31 +178,44 @@ export function FlashcardComponent({
         prompt = `Generate ${count} educational flashcards about general study skills and learning strategies`;
       }
       
-      const generatedCards = await generateContentWithGemini(
+      // Pass filesToUse to Gemini service for chunked processing
+      const generatedCards = await generateContentWithOpenAI(
         prompt,
         "flashcards",
         sessionId,
         {
           count,
-          complexity
+          complexity,
+          files: filesToUse
         }
       );
       
-      for (const card of generatedCards) {
-        const newCardResult = await addFlashcard(sessionId, { 
+      // Batch add all flashcards at once to avoid race conditions
+      const flashcardsToAdd = generatedCards.map(card => ({
           front: card.front, 
           back: card.back, 
           mastered: false 
-        });
+      }));
         
-        // Extract the latest flashcard from the session
-        const addedFlashcard = newCardResult.flashcards[newCardResult.flashcards.length - 1];
-        onFlashcardAdded(addedFlashcard);
+      const updatedSession = await addFlashcards(sessionId, flashcardsToAdd);
+
+      // Get the newly added flashcards (last N flashcards from the session)
+      const addedFlashcards = updatedSession.flashcards.slice(-generatedCards.length);
+
+      // Add all flashcards to the UI state at once
+      if (onFlashcardsAdded && addedFlashcards.length > 0) {
+        // Use batch callback if available
+        onFlashcardsAdded(addedFlashcards);
+      } else {
+        // Fall back to individual additions
+        addedFlashcards.forEach(flashcard => {
+          onFlashcardAdded(flashcard);
+        });
       }
       
       toast({
         title: "Success",
-        description: `${generatedCards.length} flashcards generated`
+        description: `${addedFlashcards.length} flashcards generated`
       });
     } catch (error) {
       console.error("Error generating flashcards:", error);

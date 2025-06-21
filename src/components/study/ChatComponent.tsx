@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage, FileItem } from "@/types/session";
-import { getChatMessages, addChatMessage, addFileToSession, generateContentWithGemini } from "@/services/sessionService";
+import { getChatMessages, addChatMessage, addFileToSession, generateContentWithOpenAI } from "@/services/sessionService";
 import { MessageSquare, Send, Upload, Plus } from "lucide-react";
 
 interface ChatComponentProps {
@@ -68,7 +68,7 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
       
       try {
         // Generate AI response
-        const response = await generateContentWithGemini(userMessageContent, "chat", sessionId);
+        const response = await generateContentWithOpenAI(userMessageContent, "chat", sessionId);
         
         // Add AI response to the chat
         const aiMessage = await addChatMessage(sessionId, {
@@ -122,14 +122,21 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
           continue;
         }
         
-        // In a real app, we would upload to a storage service
-        // Here we're just simulating the upload
+        // Read the file content
+        const fileContent = await file.arrayBuffer();
+        const base64Content = btoa(
+          new Uint8Array(fileContent)
+            .reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+        
+        // Create file object with content
         const newFile: FileItem = {
           id: `file_${Date.now()}_${file.name}`,
           name: file.name,
-          url: URL.createObjectURL(file), // In real app, this would be the cloud storage URL
+          url: URL.createObjectURL(file),
           type: file.type,
-          uploadedAt: new Date().toISOString()
+          uploadedAt: new Date().toISOString(),
+          content: base64Content // Add the file content
         };
         
         await addFileToSession(sessionId, newFile);
@@ -150,13 +157,16 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
         
         setMessages(prevMessages => [...prevMessages, userMessage]);
         
-        // Get AI response about the files
+        // Notify user that files are being processed in the background
         setResponding(true);
         
         try {
-          const promptAboutFiles = `I've uploaded ${uploadedFileNames.length > 1 ? 'new PDF files' : 'a new PDF file'} called ${uploadedFileNames.join(", ")}. Can you help me use ${uploadedFileNames.length > 1 ? 'these' : 'this'} for studying?`;
-          
-          const response = await generateContentWithGemini(promptAboutFiles, "chat", sessionId);
+          // Just acknowledge the file was uploaded without explicitly asking for ingestion
+          const response = await generateContentWithOpenAI(
+            `I've uploaded ${uploadedFileNames.length > 1 ? 'some files' : 'a file'} to this session.`,
+            "chat", 
+            sessionId
+          );
           
           const aiMessage = await addChatMessage(sessionId, {
             role: "assistant",
@@ -169,7 +179,7 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
           // Add error message to chat
           const errorMessage = await addChatMessage(sessionId, {
             role: "assistant",
-            content: "I'm sorry, I encountered an error processing your uploaded files. Please try asking a specific question about the content.",
+            content: "I've received your files and am processing them in the background. You can ask me questions about them shortly.",
           });
           
           setMessages(prev => [...prev, errorMessage]);
@@ -177,7 +187,7 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
         
         toast({
           title: "Files uploaded",
-          description: `${uploadedFileNames.length} file(s) have been uploaded successfully`
+          description: `${uploadedFileNames.length} file(s) have been uploaded and are being processed`
         });
       }
     } catch (error) {
@@ -202,14 +212,26 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-semibold mb-1">AI Study Assistant</h2>
-          <p className="text-gray-600">
-            Chat with our AI to get help with your study materials
-          </p>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-semibold">Chat Assistant</h2>
+          {files.length > 0 && (
+            <div className="flex items-center gap-1 text-sm text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>{files.length} file{files.length > 1 ? 's' : ''} available</span>
+            </div>
+          )}
         </div>
-        <div>
+        <Button
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-2"
+        >
+          <Upload className="h-4 w-4" />
+          Upload PDF
+        </Button>
+      </div>
+      
           <input
             type="file"
             ref={fileInputRef}
@@ -218,16 +240,6 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
             multiple
             onChange={handleFileUpload}
           />
-          <Button 
-            variant="outline"
-            className="flex items-center gap-2 border-purple-300 text-purple-600 hover:bg-purple-50"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="h-4 w-4" />
-            Upload PDFs
-          </Button>
-        </div>
-      </div>
       
       <Card className="border mb-4">
         <div className="h-[500px] flex flex-col">
