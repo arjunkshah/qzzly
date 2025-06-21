@@ -5,8 +5,9 @@ import { FileItem } from "@/types/session";
 import { addFileToSession } from "@/services/sessionService";
 import { generateFileSummary as openaiGenerateFileSummary } from "@/services/openaiService";
 import { useToast } from "@/hooks/use-toast";
-import { File, Upload, Download, Trash, FileText } from "lucide-react";
+import { File, Upload, Download, Trash, FileText, AlertCircle } from "lucide-react";
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+import { extractTextFromPDF, validatePDFExtraction } from "@/lib/utils";
 
 interface FilesComponentProps {
   sessionId: string;
@@ -32,70 +33,40 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
-      // Set up the worker
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
+      // First validate the PDF extraction
+      const validation = await validatePDFExtraction(file);
       
-      // Convert file to ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      
-      // Load the PDF document
-      const pdf = await pdfjsLib.getDocument({ 
-        data: arrayBuffer,
-        useWorkerFetch: false,
-        isEvalSupported: false,
-        useSystemFonts: true
-      }).promise;
-      
-      console.log(`PDF loaded successfully. Pages: ${pdf.numPages}`);
-      
-      let fullText = '';
-      
-      // Extract text from each page
-      for (let i = 1; i <= pdf.numPages; i++) {
-        try {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          
-          type TextItem = {
-            str: string;
-            // Add other properties from the TextItem type if needed
-          };
-
-          // Extract text items and join them with spaces
-          const pageText = textContent.items
-            .filter((item): item is TextItem => typeof item.str === 'string' && item.str.trim().length > 0)
-            .map((item: TextItem) => item.str.trim())
-            .join(' ');
-          
-          if (pageText.trim()) {
-            fullText += pageText + '\n\n';
-          }
-          
-          console.log(`Page ${i}: extracted ${pageText.length} characters`);
-        } catch (pageError) {
-          console.warn(`Error extracting text from page ${i}:`, pageError);
-          continue;
-        }
+      if (!validation.success) {
+        console.warn("PDF validation failed:", validation.issues);
+        return validation.sample || `Failed to extract text from ${file.name}. ${validation.issues.join(', ')}`;
       }
       
-      // Clean up the text
-      const cleanedText = fullText
-        .replace(/\s+/g, ' ')
-        .replace(/\n\s*\n/g, '\n')
-        .trim();
+      // Log validation results for debugging
+      console.log(`PDF validation results for ${file.name}:`, {
+        quality: validation.quality,
+        textLength: validation.textLength,
+        pagesExtracted: validation.pagesExtracted,
+        issues: validation.issues
+      });
       
-      console.log(`Final extraction: ${cleanedText.length} characters from ${file.name}`);
-      console.log(`First 500 characters: "${cleanedText.substring(0, 500)}"`);
+      // Extract the actual text
+      const extractedContent = await extractTextFromPDF(file);
       
-      if (cleanedText.length === 0) {
-        return `This PDF appears to contain no extractable text. File: ${file.name} (${(file.size / 1024).toFixed(1)}KB). This might be an image-based PDF or contain only visual elements.`;
+      // Provide user feedback based on quality
+      if (validation.quality === 'poor') {
+        toast({
+          title: "Warning",
+          description: `PDF extraction quality is poor. ${validation.issues.join(', ')}`,
+          variant: "destructive",
+        });
+      } else if (validation.quality === 'fair') {
+        toast({
+          title: "Notice",
+          description: "PDF extraction quality is fair. Some content may be missing.",
+        });
       }
       
-      if (cleanedText.length < 100) {
-        return `Limited text extracted from ${file.name}: "${cleanedText}". This PDF may contain mostly images or non-text content. File size: ${(file.size / 1024).toFixed(1)}KB.`;
-      }
-      
-      return cleanedText;
+      return extractedContent;
     } catch (error) {
       console.error("Error extracting PDF text:", error);
       return `Failed to extract text from ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}. File size: ${(file.size / 1024).toFixed(1)}KB. This may be an encrypted, corrupted, or image-only PDF.`;

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard, FileItem } from "@/types/session";
-import { addFlashcard, toggleFlashcardMastery, generateContentWithOpenAI, getSessionById, updateFlashcard, addFlashcards } from "@/services/sessionService";
+import { addFlashcard, toggleFlashcardMastery, generateFlashcardsWithOpenAI, getSessionById, updateFlashcard, addFlashcards } from "@/services/sessionService";
 import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -161,7 +161,7 @@ export function FlashcardComponent({
       // Use textChunks if available for large file processing
       let filesToUse = files;
       if (files.length > 0 && files[0].textChunks && files[0].textChunks.length > 0) {
-        // Use the chunked text for Gemini
+        // Use the chunked text for OpenAI processing
         filesToUse = files;
       }
 
@@ -178,16 +178,12 @@ export function FlashcardComponent({
         prompt = `Generate ${count} educational flashcards about general study skills and learning strategies`;
       }
       
-      // Pass filesToUse to Gemini service for chunked processing
-      const generatedCards = await generateContentWithOpenAI(
-        prompt,
-        "flashcards",
+      // Pass filesToUse to OpenAI service for processing
+      const generatedCards = await generateFlashcardsWithOpenAI(
         sessionId,
-        {
-          count,
-          complexity,
-          files: filesToUse
-        }
+        prompt,
+        count,
+        complexity
       );
       
       // Batch add all flashcards at once to avoid race conditions

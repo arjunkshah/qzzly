@@ -440,14 +440,24 @@ export async function generateFlashcards(
     
     const prompt = `${difficultyPrompt}
 
-Generate exactly ${count} flashcards about: ${processedMaterial}
+Generate exactly ${count} high-quality educational flashcards about: ${processedMaterial}
 
 Requirements:
-- Each flashcard should have a clear, concise question on the front
-- The back should contain a comprehensive but focused answer
-- Questions should test understanding, not just memorization
-- Vary the types of questions (definitions, explanations, applications, comparisons)
-- Make sure answers are accurate and educational
+- Each flashcard should have a clear, concise question on the front that tests understanding
+- The back should contain a comprehensive but focused answer that explains the concept
+- Questions should test understanding, not just memorization - include application, analysis, and synthesis
+- Vary the types of questions: definitions, explanations, applications, comparisons, problem-solving, and critical thinking
+- Make sure answers are accurate, educational, and provide learning value
+- Use clear, accessible language appropriate for the complexity level
+- Ensure questions are specific and unambiguous
+- Include real-world examples or applications when relevant
+
+Question Types to Include:
+- Conceptual understanding questions
+- Application-based questions
+- Comparison and contrast questions
+- Problem-solving scenarios
+- Critical thinking questions
 
 Return the response as a JSON array with this exact format:
 [
@@ -562,16 +572,27 @@ export async function generateQuiz(
     
     const prompt = `${difficultyPrompt}
 
-Generate exactly ${questionCount} quiz questions ${topicText}.
+Generate exactly ${questionCount} high-quality quiz questions ${topicText}.
 Material: ${processedMaterial}
 
 Requirements:
 - ${questionTypePrompt}
 - ${explanationPrompt}
-- Questions should be clear and unambiguous
+- Questions should be clear, unambiguous, and test genuine understanding
 - Ensure only one correct answer per question
-- Make incorrect options plausible but clearly wrong
-- Test understanding, not just memorization
+- Make incorrect options plausible but clearly distinguishable from the correct answer
+- Test understanding, not just memorization - include application and critical thinking
+- Use clear, accessible language appropriate for the difficulty level
+- Include a mix of question types: factual recall, conceptual understanding, application, analysis, and synthesis
+- Ensure questions are specific and avoid vague or overly broad questions
+- Make explanations educational and helpful for learning
+
+Question Quality Guidelines:
+- Avoid "all of the above" or "none of the above" options
+- Ensure distractors (wrong answers) are plausible but clearly incorrect
+- Make questions specific rather than general
+- Test higher-order thinking skills when appropriate
+- Use real-world scenarios or examples when relevant
 
 Return the response as a JSON object with this exact format:
 {
@@ -694,16 +715,29 @@ export async function generateStudyMaterial(
     
     const prompt = `${formatPrompt} ${complexityPrompt}
 
-Create study material about: ${processedTopic}
+Create comprehensive study material about: ${processedTopic}
 
 Requirements:
-- Be comprehensive and educational
-- Include key concepts and important details
-- Use clear, organized structure
-- Make it suitable for studying and review
-- Include examples where helpful
+- Be comprehensive and educational, covering all important aspects of the topic
+- Include key concepts, definitions, principles, and important details
+- Use clear, organized structure with logical flow and progression
+- Make it suitable for studying, review, and exam preparation
+- Include relevant examples, case studies, or real-world applications
+- Highlight important relationships between concepts
+- Use appropriate formatting (headings, bullet points, numbered lists) for clarity
+- Include any important formulas, dates, or specific details that need to be memorized
+- Provide context and background information where helpful
+- Use language appropriate for the specified complexity level
+- Include practical tips or study strategies related to the topic
 
-Provide the study material in a well-formatted, readable format.`;
+Structure Guidelines:
+- Start with an overview or introduction
+- Organize content in logical sections or chapters
+- Use clear headings and subheadings
+- Include summaries or key takeaways for each section
+- End with a comprehensive summary or conclusion
+
+Please provide the study material in a well-formatted, readable format that maximizes learning effectiveness.`;
 
     const response = await generateWithOpenAI(prompt, {
       sessionId,
@@ -792,7 +826,24 @@ export async function generateFileSummary(
 
     const trimmed = content.length > 5000 ? content.substring(0, 5000) + "..." : content;
 
-    const prompt = `Please provide a concise summary of the following document content. Focus on the main topics, key concepts, and what a student could learn from this material:\n\nDocument: ${fileName}\n\nContent: ${trimmed}\n\nPlease provide a clear, educational summary regardless of the document format or structure.`;
+    const prompt = `Please provide a comprehensive, educational summary of the following document content. 
+
+Document: ${fileName}
+
+Content: ${trimmed}
+
+Summary Requirements:
+- Focus on the main topics, key concepts, and learning objectives
+- Identify the most important information a student should understand
+- Highlight key definitions, principles, or theories discussed
+- Include any practical applications or real-world examples mentioned
+- Note any relationships between concepts or cause-and-effect connections
+- Mention any important dates, figures, or specific details that are central to understanding
+- Structure the summary in a logical, easy-to-follow format
+- Use clear, educational language that helps with learning and retention
+- Provide context for why this information is important or relevant
+
+Please provide a clear, educational summary that would help a student understand and remember the key points from this document, regardless of the document format or structure.`;
 
     const summary = await generateWithOpenAI(prompt, {
       sessionId,

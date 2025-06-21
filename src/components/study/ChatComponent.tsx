@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage, FileItem } from "@/types/session";
-import { getChatMessages, addChatMessage, addFileToSession, generateContentWithOpenAI } from "@/services/sessionService";
+import { getChatMessages, addChatMessage, addFileToSession, generateLongAnswerWithOpenAI } from "@/services/sessionService";
 import { MessageSquare, Send, Upload, Plus } from "lucide-react";
 
 interface ChatComponentProps {
@@ -68,7 +68,7 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
       
       try {
         // Generate AI response
-        const response = await generateContentWithOpenAI(userMessageContent, "chat", sessionId);
+        const response = await generateLongAnswerWithOpenAI(sessionId, userMessageContent, "medium");
         
         // Add AI response to the chat
         const aiMessage = await addChatMessage(sessionId, {
@@ -162,10 +162,10 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
         
         try {
           // Just acknowledge the file was uploaded without explicitly asking for ingestion
-          const response = await generateContentWithOpenAI(
+          const response = await generateLongAnswerWithOpenAI(
+            sessionId,
             `I've uploaded ${uploadedFileNames.length > 1 ? 'some files' : 'a file'} to this session.`,
-            "chat", 
-            sessionId
+            "medium"
           );
           
           const aiMessage = await addChatMessage(sessionId, {

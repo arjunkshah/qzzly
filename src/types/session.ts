@@ -1,4 +1,3 @@
-
 export interface StudySession {
   id: string;
   title: string;
@@ -19,7 +18,7 @@ export interface FileItem {
   uploadedAt: string;
   content?: string;
   binaryData?: string; // Base64 encoded file data
-  textChunks?: string[]; // Chunked text extracted from PDF for Gemini
+  textChunks?: string[]; // Chunked text extracted from PDF for AI processing
   extractedText?: string; // Full extracted text for summary generation
   summary?: string;
 }
