@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Flashcard, StudyMaterial, FileItem } from "@/types/session";
-import { toggleFlashcardMastery, generateStudyMaterialWithGemini, generateLongAnswerWithGemini } from "@/services/sessionService";
+import { toggleFlashcardMastery } from "@/services/sessionService";
+import { generateStudyMaterial, generateLongAnswer } from "@/services/openaiService";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Check, X, ArrowLeft, ArrowRight, Lightbulb, BookText, MessageSquare, BrainCircuit } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -152,15 +153,27 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     }
     
     setIsGenerating(true);
+    setStudyMaterialContent(null);
     try {
-      const material = await generateStudyMaterialWithGemini(
-        sessionId,
+      const materialContent = await generateStudyMaterial(
         topic,
-        complexity as 'simple' | 'medium' | 'advanced',
-        format
+        format,
+        complexity,
+        files,
+        sessionId
       );
       
-      setStudyMaterialContent(material);
+      const newMaterial: StudyMaterial = {
+        id: `sm-${Date.now()}`,
+        title: topic,
+        content: materialContent,
+        format,
+        complexity,
+        createdAt: new Date().toISOString()
+      };
+
+      setStudyMaterialContent(newMaterial);
+
       toast({
         title: "Study material generated",
         description: "Your study material has been created successfully"
@@ -187,11 +200,13 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     }
     
     setIsGeneratingAnswer(true);
+    setLongAnswer("");
     try {
-      const answer = await generateLongAnswerWithGemini(
-        sessionId,
+      const answer = await generateLongAnswer(
         question,
-        answerComplexity
+        answerComplexity,
+        files,
+        sessionId
       );
       
       setLongAnswer(answer);

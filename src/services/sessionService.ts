@@ -5,11 +5,11 @@ import { canCreateSession, incrementSessionCount, getCurrentUser } from "./authS
 // --- Session Management ---
 
 export const getSessions = (): Promise<StudySession[]> => {
-  return apiRequest<StudySession[]>('/sessions');
+  return apiRequest<StudySession[]>('/api/sessions');
 };
 
 export const getSessionById = (id: string): Promise<StudySession | null> => {
-  return apiRequest<StudySession | null>(`/sessions/${id}`);
+  return apiRequest<StudySession | null>(`/api/sessions/${id}`);
 };
 
 export const createSession = async (sessionData: Partial<StudySession>): Promise<StudySession> => {
@@ -21,48 +21,52 @@ export const createSession = async (sessionData: Partial<StudySession>): Promise
     throw new Error('Session limit reached. Upgrade to Pro for unlimited sessions.');
   }
   
-  const newSession = await apiRequest<StudySession>('/sessions', 'POST', sessionData);
+  const newSession = await apiRequest<StudySession>('/api/sessions', 'POST', sessionData);
   await incrementSessionCount(currentUser.id);
   
   return newSession;
 };
 
 export const deleteSession = (id: string): Promise<void> => {
-  return apiRequest<void>(`/sessions/${id}`, 'DELETE');
+  return apiRequest<void>(`/api/sessions/${id}`, 'DELETE');
 };
 
 export const updateSession = (id: string, updates: Partial<StudySession>): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/sessions/${id}`, 'PUT', updates);
+  return apiRequest<StudySession>(`/api/sessions/${id}`, 'PUT', updates);
 };
 
 // --- File Management ---
 
 export const addFileToSession = (sessionId: string, file: Omit<FileItem, 'id' | 'url' | 'uploadedAt'>): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/sessions/${sessionId}/files`, 'POST', file);
+  return apiRequest<StudySession>(`/api/sessions/${sessionId}/files`, 'POST', file);
 };
 
 export const removeFileFromSession = (sessionId: string, fileId: string): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/sessions/${sessionId}/files/${fileId}`, 'DELETE');
+  return apiRequest<StudySession>(`/api/sessions/${sessionId}/files/${fileId}`, 'DELETE');
 };
 
 // --- Chat Messages ---
 
 export const getChatMessages = (sessionId: string): Promise<ChatMessage[]> => {
-  return apiRequest<ChatMessage[]>(`/sessions/${sessionId}/messages`);
+  return apiRequest<ChatMessage[]>(`/api/sessions/${sessionId}/messages`);
 };
 
 export const addChatMessage = (sessionId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>): Promise<ChatMessage> => {
-  return apiRequest<ChatMessage>(`/sessions/${sessionId}/messages`, 'POST', message);
+  return apiRequest<ChatMessage>(`/api/sessions/${sessionId}/messages`, 'POST', message);
 };
 
 // --- Flashcards ---
 
 export const addFlashcards = (sessionId: string, flashcards: Omit<Flashcard, 'id'>[]): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/sessions/${sessionId}/flashcards`, 'POST', { flashcards });
+  return apiRequest<StudySession>(`/api/sessions/${sessionId}/flashcards`, 'POST', { flashcards });
+};
+
+export const toggleFlashcardMastery = (sessionId: string, flashcardId: string): Promise<Flashcard> => {
+  return apiRequest<Flashcard>(`/api/sessions/${sessionId}/flashcards/${flashcardId}/toggle-mastery`, 'PUT');
 };
 
 // --- Quizzes ---
 
 export const addQuiz = (sessionId: string, quiz: Omit<Quiz, 'id'>): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/sessions/${sessionId}/quizzes`, 'POST', { quiz });
+  return apiRequest<StudySession>(`/api/sessions/${sessionId}/quizzes`, 'POST', { quiz });
 }; 

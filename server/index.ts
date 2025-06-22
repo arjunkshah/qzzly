@@ -1,6 +1,5 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
-import bodyParser from 'body-parser';
 import { User } from '../src/types/user';
 import { StudySession, ChatMessage, Flashcard } from '../src/types/session';
 
@@ -21,7 +20,7 @@ const db: Database = {
 };
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
 // --- Health Check ---
 app.get('/', (req: Request, res: Response) => {
@@ -59,7 +58,7 @@ app.post('/users', (req: Request, res: Response) => {
     id: `user_${Date.now()}`,
     email,
     name: name || email,
-    // @ts-ignore - password is not part of the User type, but needed for login
+    // @ts-expect-error - password is not part of the User type, but needed for login
     password,
     subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
     sessionCount: 0,
@@ -73,7 +72,7 @@ app.post('/users', (req: Request, res: Response) => {
 // Login
 app.post('/login', (req: Request, res: Response) => {
   const { email, password } = req.body;
-  // @ts-ignore
+  // @ts-expect-error - password is not part of the User type, but needed for login
   const user = db.users.find((u) => u.email === email && u.password === password);
   if (user) {
     res.json(user);
@@ -247,6 +246,22 @@ app.post('/sessions/:id/quizzes', (req: Request, res: Response) => {
     const newQuiz = { ...quiz, id: `quiz_${Date.now()}` };
     db.sessions[index].quizzes.push(newQuiz);
     res.status(201).json(db.sessions[index]);
+  } else {
+    res.status(404).send('Session not found');
+  }
+});
+
+// Toggle flashcard mastery
+app.put('/sessions/:sessionId/flashcards/:flashcardId/toggle-mastery', (req: Request, res: Response) => {
+  const session = db.sessions.find((s) => s.id === req.params.sessionId);
+  if (session) {
+    const flashcard = session.flashcards.find((f) => f.id === req.params.flashcardId);
+    if (flashcard) {
+      flashcard.mastered = !flashcard.mastered;
+      res.json(flashcard);
+    } else {
+      res.status(404).send('Flashcard not found');
+    }
   } else {
     res.status(404).send('Session not found');
   }
