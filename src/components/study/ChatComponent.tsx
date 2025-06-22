@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage, FileItem } from "@/types/session";
-import { getChatMessages, addChatMessage, addFileToSession, generateLongAnswerWithOpenAI } from "@/services/sessionService";
+import { getChatMessages, addChatMessage, addFileToSession } from "@/services/sessionService";
+import { generateLongAnswer } from "@/services/openaiService";
 import { MessageSquare, Send, Upload, Plus } from "lucide-react";
 
 interface ChatComponentProps {
@@ -68,7 +69,7 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
       
       try {
         // Generate AI response
-        const response = await generateLongAnswerWithOpenAI(sessionId, userMessageContent, "medium");
+        const response = await generateLongAnswer(userMessageContent, "medium", files, sessionId);
         
         // Add AI response to the chat
         const aiMessage = await addChatMessage(sessionId, {
@@ -107,12 +108,12 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
-    const files = Array.from(e.target.files);
+    const selectedFiles = Array.from(e.target.files);
     const uploadedFileNames: string[] = [];
     
     try {
       // Process each file
-      for (const file of files) {
+      for (const file of selectedFiles) {
         if (file.type !== "application/pdf") {
           toast({
             title: "Error",
@@ -162,10 +163,11 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
         
         try {
           // Just acknowledge the file was uploaded without explicitly asking for ingestion
-          const response = await generateLongAnswerWithOpenAI(
-            sessionId,
+          const response = await generateLongAnswer(
             `I've uploaded ${uploadedFileNames.length > 1 ? 'some files' : 'a file'} to this session.`,
-            "medium"
+            "medium",
+            files,
+            sessionId
           );
           
           const aiMessage = await addChatMessage(sessionId, {

@@ -1,14 +1,14 @@
 import { StudySession, FileItem, Flashcard, Quiz, ChatMessage, StudyMaterial } from "@/types/session";
 import { 
-  generateWithOpenAI, 
+  generateWithGemini, 
   generateFlashcards, 
   generateQuiz, 
   generateStudyMaterial, 
   generateLongAnswer,
-  addFileToSessionContext,
-  ingestAndSummarizeFile,
-  ingestSessionFiles
-} from "./openaiService";
+  generateSummary,
+  generateChatResponse
+} from "./geminiService";
+import { canCreateSession, incrementSessionCount, getCurrentUser } from "./authService";
 
 // Mock data for study sessions
 const mockSessions: StudySession[] = [
@@ -177,35 +177,54 @@ export const getSessionById = (id: string): Promise<StudySession | null> => {
 // Create a new session
 export const createSession = (sessionData: Partial<StudySession>): Promise<StudySession> => {
   initializeData();
-  return new Promise((resolve) => {
-    const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]');
-    const newSession: StudySession = {
-      id: `session_${Date.now()}`,
-      title: sessionData.title || 'New Study Session',
-      description: sessionData.description || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      files: sessionData.files || [],
-      flashcards: sessionData.flashcards || [],
-      quizzes: sessionData.quizzes || []
-    };
-    
-    sessions.push(newSession);
-    localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-    
-    // Initialize empty chat for this session
-    const messages = JSON.parse(localStorage.getItem(MESSAGES_KEY) || '{}');
-    messages[newSession.id] = [
-      {
-        id: `welcome_${newSession.id}`,
-        role: 'assistant',
-        content: `Welcome to your new study session "${newSession.title}"! I'm here to help you learn. You can upload PDFs, create flashcards, or ask me questions.`,
-        timestamp: new Date().toISOString()
+  return new Promise((resolve, reject) => {
+    try {
+      // Check user authentication and session limits
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        reject(new Error('User must be logged in to create sessions'));
+        return;
       }
-    ];
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
-    
-    setTimeout(() => resolve(newSession), 300); // Simulate API delay
+
+      if (!canCreateSession(currentUser)) {
+        reject(new Error('Session limit reached. Upgrade to Pro for unlimited sessions.'));
+        return;
+      }
+
+      const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]');
+      const newSession: StudySession = {
+        id: `session_${Date.now()}`,
+        title: sessionData.title || 'New Study Session',
+        description: sessionData.description || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        files: sessionData.files || [],
+        flashcards: sessionData.flashcards || [],
+        quizzes: sessionData.quizzes || []
+      };
+      
+      sessions.push(newSession);
+      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+      
+      // Increment user's session count
+      incrementSessionCount(currentUser.id);
+      
+      // Initialize empty chat for this session
+      const messages = JSON.parse(localStorage.getItem(MESSAGES_KEY) || '{}');
+      messages[newSession.id] = [
+        {
+          id: `welcome_${newSession.id}`,
+          role: 'assistant',
+          content: `Welcome to your new study session "${newSession.title}"! I'm here to help you learn. You can upload PDFs, create flashcards, generate quizzes, and ask me questions about your study materials.`,
+          timestamp: new Date().toISOString(),
+        }
+      ];
+      localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+      
+      setTimeout(() => resolve(newSession), 300); // Simulate API delay
+    } catch (error) {
+      reject(error);
+    }
   });
 };
 
@@ -270,21 +289,22 @@ export const addFileToSession = async (sessionId: string, file: FileItem): Promi
     sessions[sessionIndex].updatedAt = new Date().toISOString();
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
 
-    addFileToSessionContext(sessionId, file);
-
-    // No need to await this; it runs in the background
-    ingestAndSummarizeFile(file, sessionId)
-      .then(result => {
+    // Generate file summary in the background
+    generateSummary(`File: ${file.name}`, 200)
+      .then(summary => {
         const fileSummaries = JSON.parse(localStorage.getItem('file_summaries') || '{}');
         if (!fileSummaries[sessionId]) {
           fileSummaries[sessionId] = {};
         }
-        fileSummaries[sessionId][file.id] = result;
+        fileSummaries[sessionId][file.id] = {
+          summary,
+          topics: [file.name]
+        };
         localStorage.setItem('file_summaries', JSON.stringify(fileSummaries));
         console.log(`Successfully processed file ${file.name}`);
       })
       .catch(error => {
-        console.error('Error ingesting file:', error);
+        console.error('Error processing file:', error);
       });
 
     return sessions[sessionIndex];
@@ -470,12 +490,12 @@ export const addStudyMaterial = async (sessionId: string, material: Omit<StudyMa
   return await updateSession(sessionId, { studyMaterials: updatedMaterials });
 };
 
-// Generate flashcards using OpenAI API
-export const generateFlashcardsWithOpenAI = async (
+// Generate flashcards using Gemini API
+export const generateFlashcardsWithGemini = async (
   sessionId: string,
-  topic: string,
-  count: number = 5,
-  complexity: string = "medium"
+  content: string,
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+  count: number = 5
 ): Promise<Flashcard[]> => {
   try {
     // Get session files
@@ -484,36 +504,18 @@ export const generateFlashcardsWithOpenAI = async (
       throw new Error("Session not found");
     }
     
-    // Generate flashcards using session context
-    const generatedFlashcards = await generateFlashcards(topic, count, complexity, session.files, sessionId);
+    // Generate flashcards using Gemini
+    const generatedFlashcards = await generateFlashcards(content, difficulty, count);
     
-    // Save each flashcard to the session
-    const savedFlashcards: Flashcard[] = [];
-    
-    // Use Promise.all to add all flashcards concurrently and collect results
-    await Promise.all(generatedFlashcards.map(async (card) => {
-      const flashcard: Omit<Flashcard, 'id'> = {
-        front: card.front,
-        back: card.back,
-        mastered: false
-      };
-      
-      try {
-        // Add the flashcard to the session
-        const newCard = {
-          ...flashcard,
-          id: `fc_${Date.now()}_${savedFlashcards.length}`, // Ensure unique ID
-          mastered: false
-        };
-        
-        // Add to the array of saved flashcards
-        savedFlashcards.push(newCard);
-      } catch (error) {
-        console.error("Error adding flashcard:", error);
-      }
+    // Convert to Flashcard format and save to session
+    const savedFlashcards: Flashcard[] = generatedFlashcards.map((card, index) => ({
+      id: `fc_${Date.now()}_${index}`,
+      front: card.question,
+      back: card.answer,
+      mastered: false
     }));
     
-    // Now batch update the session with all flashcards at once
+    // Update session with new flashcards
     if (savedFlashcards.length > 0) {
       const updatedFlashcards = [...session.flashcards, ...savedFlashcards];
       await updateSession(sessionId, { flashcards: updatedFlashcards });
@@ -526,12 +528,12 @@ export const generateFlashcardsWithOpenAI = async (
   }
 };
 
-// Generate study material using OpenAI API
-export const generateStudyMaterialWithOpenAI = async (
+// Generate study material using Gemini API
+export const generateStudyMaterialWithGemini = async (
   sessionId: string,
-  topic: string,
-  format: 'notes' | 'outline' | 'summary' = 'notes',
-  complexity: string = "medium"
+  content: string,
+  complexity: 'simple' | 'medium' | 'advanced' = 'medium',
+  type: 'summary' | 'notes' | 'outline' = 'summary'
 ): Promise<StudyMaterial> => {
   try {
     // Get session files
@@ -540,16 +542,16 @@ export const generateStudyMaterialWithOpenAI = async (
       throw new Error("Session not found");
     }
     
-    // Generate study material content with session context
-    const content = await generateStudyMaterial(topic, format, complexity, session.files, sessionId);
+    // Generate study material content with Gemini
+    const materialContent = await generateStudyMaterial(content, complexity, type);
     
     // Create new study material with unique ID
     const materialId = `material_${Date.now()}`;
     const newMaterial: StudyMaterial = {
       id: materialId,
-      title: topic,
-      content,
-      format,
+      title: `${type.charAt(0).toUpperCase() + type.slice(1)} - ${complexity}`,
+      content: materialContent,
+      format: type,
       complexity,
       createdAt: new Date().toISOString()
     };
@@ -567,11 +569,11 @@ export const generateStudyMaterialWithOpenAI = async (
   }
 };
 
-// Generate long answer using OpenAI API
-export const generateLongAnswerWithOpenAI = async (
+// Generate long answer using Gemini API
+export const generateLongAnswerWithGemini = async (
   sessionId: string,
   question: string,
-  complexity: string = "medium"
+  context: string = ""
 ): Promise<string> => {
   try {
     // Get session files
@@ -580,11 +582,36 @@ export const generateLongAnswerWithOpenAI = async (
       throw new Error("Session not found");
     }
     
-    // Generate long answer with session context
-    const answer = await generateLongAnswer(question, complexity, session.files, sessionId);
+    // Generate long answer with Gemini
+    const answer = await generateLongAnswer(question, context);
     return answer;
   } catch (error) {
     console.error("Error generating long answer:", error);
+    throw error;
+  }
+};
+
+// Generate chat response using Gemini API
+export const generateChatResponseWithGemini = async (
+  sessionId: string,
+  message: string,
+  conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
+): Promise<string> => {
+  try {
+    // Get session files for context
+    const session = await getSessionById(sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+    
+    // Create context from session files
+    const context = session.files.map(file => file.name).join(', ');
+    
+    // Generate chat response with Gemini
+    const response = await generateChatResponse(message, conversationHistory, context);
+    return response;
+  } catch (error) {
+    console.error("Error generating chat response:", error);
     throw error;
   }
 };

@@ -1,20 +1,17 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-type User = {
-  id: string;
-  email: string;
-  name?: string;
-};
-
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (email: string, password: string, name?: string) => Promise<boolean>;
-  logout: () => void;
-  isLoading: boolean;
-}
+import { 
+  AuthContextType, 
+  User, 
+  LoginFormData, 
+  SignupFormData 
+} from '@/types/user';
+import { 
+  loginUser, 
+  signupUser, 
+  logoutUser, 
+  updateSubscription, 
+  getCurrentUser 
+} from '@/services/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -22,96 +19,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check for existing user on mount
   useEffect(() => {
-    // Check for user in localStorage on initial load
-    const storedUser = localStorage.getItem('quizio_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('quizio_user');
-      }
-    }
+    const currentUser = getCurrentUser();
+    setUser(currentUser);
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // In a real app, this would be an API call to validate credentials
-    // For now, we'll simulate a login with basic validation
-    setIsLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simple validation (in a real app, this would be server-side)
-    if (!email || !password) {
-      setIsLoading(false);
+    try {
+      setIsLoading(true);
+      const success = await loginUser({ email, password });
+      if (success) {
+        const currentUser = getCurrentUser();
+        setUser(currentUser);
+      }
+      return success;
+    } catch (error) {
+      console.error('Login error:', error);
       return false;
-    }
-    
-    // Demo - accept any properly formatted email with password length >= 6
-    if (email.includes('@') && password.length >= 6) {
-      const newUser = {
-        id: `user_${Date.now()}`,
-        email,
-        name: email.split('@')[0]
-      };
-      
-      setUser(newUser);
-      localStorage.setItem('quizio_user', JSON.stringify(newUser));
+    } finally {
       setIsLoading(false);
-      return true;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
-  const signup = async (email: string, password: string, name?: string): Promise<boolean> => {
-    // In a real app, this would create a new user in the database
-    setIsLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simple validation
-    if (!email || !password || password.length < 6) {
-      setIsLoading(false);
+  const signup = async (email: string, password: string, name: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const success = await signupUser({ email, password, name });
+      if (success) {
+        const currentUser = getCurrentUser();
+        setUser(currentUser);
+      }
+      return success;
+    } catch (error) {
+      console.error('Signup error:', error);
       return false;
-    }
-    
-    // Check email format
-    if (!email.includes('@')) {
+    } finally {
       setIsLoading(false);
-      return false;
     }
-    
-    const newUser = {
-      id: `user_${Date.now()}`,
-      email,
-      name: name || email.split('@')[0]
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('quizio_user', JSON.stringify(newUser));
-    setIsLoading(false);
-    return true;
   };
 
   const logout = () => {
+    logoutUser();
     setUser(null);
-    localStorage.removeItem('quizio_user');
+  };
+
+  const updateUserSubscription = async (plan: 'free' | 'pro', promoCode?: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      setIsLoading(true);
+      const success = await updateSubscription(user.id, plan, promoCode);
+      if (success) {
+        const currentUser = getCurrentUser();
+        setUser(currentUser);
+      }
+      return success;
+    } catch (error) {
+      console.error('Subscription update error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    isAuthenticated: !!user,
+    login,
+    signup,
+    logout,
+    updateSubscription: updateUserSubscription,
+    isLoading
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated: !!user, 
-      login, 
-      signup, 
-      logout, 
-      isLoading 
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

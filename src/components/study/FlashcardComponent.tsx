@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard, FileItem } from "@/types/session";
-import { addFlashcard, toggleFlashcardMastery, generateFlashcardsWithOpenAI, getSessionById, updateFlashcard, addFlashcards } from "@/services/sessionService";
+import { addFlashcard, toggleFlashcardMastery, generateFlashcardsWithGemini, getSessionById, updateFlashcard, addFlashcards } from "@/services/sessionService";
 import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -178,12 +178,12 @@ export function FlashcardComponent({
         prompt = `Generate ${count} educational flashcards about general study skills and learning strategies`;
       }
       
-      // Pass filesToUse to OpenAI service for processing
-      const generatedCards = await generateFlashcardsWithOpenAI(
+      // Pass filesToUse to Gemini service for processing
+      const generatedCards = await generateFlashcardsWithGemini(
         sessionId,
         prompt,
-        count,
-        complexity
+        generationOptions.complexity as 'easy' | 'medium' | 'hard',
+        generationOptions.count
       );
       
       // Batch add all flashcards at once to avoid race conditions

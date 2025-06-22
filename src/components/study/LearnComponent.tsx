@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Flashcard, StudyMaterial, FileItem } from "@/types/session";
-import { toggleFlashcardMastery, generateStudyMaterialWithOpenAI, generateLongAnswerWithOpenAI } from "@/services/sessionService";
+import { toggleFlashcardMastery, generateStudyMaterialWithGemini, generateLongAnswerWithGemini } from "@/services/sessionService";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Check, X, ArrowLeft, ArrowRight, Lightbulb, BookText, MessageSquare, BrainCircuit } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -153,11 +153,11 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     
     setIsGenerating(true);
     try {
-      const material = await generateStudyMaterialWithOpenAI(
+      const material = await generateStudyMaterialWithGemini(
         sessionId,
         topic,
-        format, 
-        complexity
+        complexity as 'simple' | 'medium' | 'advanced',
+        format
       );
       
       setStudyMaterialContent(material);
@@ -188,7 +188,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     
     setIsGeneratingAnswer(true);
     try {
-      const answer = await generateLongAnswerWithOpenAI(
+      const answer = await generateLongAnswerWithGemini(
         sessionId,
         question,
         answerComplexity
