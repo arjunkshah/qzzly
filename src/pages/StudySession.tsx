@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/NavBar";
 import { 
@@ -14,7 +14,6 @@ import {
   addChatMessage, 
   getChatMessages, 
   addFileToSession, 
-  generateContentWithOpenAI, 
   addFlashcard, 
   toggleFlashcardMastery, 
   addQuiz
@@ -37,33 +36,38 @@ export default function StudySession() {
   const { toast } = useToast();
   const [session, setSession] = useState<StudySessionType | null>(null);
   const [activeTab, setActiveTab] = useState("files");
-  const mainRef = useScrollAnimation<HTMLElement>();
+  const mainRef = useScrollAnimation<HTMLDivElement>();
 
-  const { isLoading } = useQuery({
+  const { isLoading, error, data } = useQuery({
     queryKey: ["session", id],
     queryFn: () => getSessionById(id ?? ""),
     enabled: !!id,
-    onSuccess: (data) => {
-      if (!data) {
-        toast({
-          title: "Error",
-          description: "Study session not found",
-          variant: "destructive",
-        });
-        navigate('/sessions');
-        return;
-      }
+    retry: 1,
+    retryDelay: 1000,
+  });
+
+  useEffect(() => {
+    if (data) {
+      console.log("Session query success:", { id, data });
       setSession(data);
-    },
-    onError: () => {
+    } else if (error) {
+      console.error("Session query error:", { id, error });
       toast({
         title: "Error",
         description: "Failed to load study session",
         variant: "destructive",
       });
       navigate('/sessions');
+    } else if (!isLoading && !data) {
+      console.log("Session not found for ID:", id);
+      toast({
+        title: "Error",
+        description: "Study session not found",
+        variant: "destructive",
+      });
+      navigate('/sessions');
     }
-  });
+  }, [data, error, isLoading, id, navigate, toast]);
 
   if (isLoading) {
     return (
@@ -153,12 +157,6 @@ export default function StudySession() {
                     files: [...session.files, file]
                   });
                 }} 
-                onFileRemoved={(fileId) => {
-                  setSession({
-                    ...session,
-                    files: session.files.filter(file => file.id !== fileId)
-                  });
-                }}
               />
             </TabsContent>
             

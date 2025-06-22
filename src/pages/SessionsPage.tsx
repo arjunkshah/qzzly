@@ -29,6 +29,7 @@ export default function SessionsPage() {
   const createSessionMutation = useMutation({
     mutationFn: (data: Partial<StudySession>) => createSession(data),
     onSuccess: (newSession) => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) => [
         ...old,
         newSession,
@@ -40,6 +41,9 @@ export default function SessionsPage() {
         title: "Success",
         description: `"${newSession.title}" has been created successfully.`,
       });
+      setTimeout(() => {
+        navigate(`/session/${newSession.id}`);
+      }, 100);
     },
     onError: () => {
       toast({
