@@ -12,7 +12,7 @@
 
 ### **Primary URL (HTTPS)**
 ```
-https://c9f9-173-219-115-5.ngrok-free.app
+https://21b0-173-219-115-5.ngrok-free.app
 ```
 
 ### **Local Development URL**
@@ -53,7 +53,7 @@ http://localhost:8080
 ## 🎯 How to Access
 
 1. **Open your browser**
-2. **Navigate to:** `https://c9f9-173-219-115-5.ngrok-free.app`
+2. **Navigate to:** `https://21b0-173-219-115-5.ngrok-free.app`
 3. **Accept the Warning**: Click "Visit Site" or "Continue" on the ngrok warning page
 4. **Start using Quiz.io!**
 
@@ -108,7 +108,7 @@ curl http://localhost:4040/api/tunnels
 
 ### **Health Check**
 ```bash
-curl -s https://c9f9-173-219-115-5.ngrok-free.app | head -1
+curl -s https://21b0-173-219-115-5.ngrok-free.app | head -1
 # Should return: <!DOCTYPE html>
 ```
 
@@ -125,7 +125,7 @@ Your Quiz.io application is now:
 
 **Share this URL with your users:**
 ```
-https://c9f9-173-219-115-5.ngrok-free.app
+https://21b0-173-219-115-5.ngrok-free.app
 ```
 
 ---
@@ -162,11 +162,19 @@ When you visit the public URL, you'll see ngrok's warning page. This is normal f
 2. Check browser console for specific errors
 3. Try accessing via localhost:8080 instead
 
+### If session creation fails:
+1. The issue has been fixed - sessions should now create properly
+2. Check browser console for any remaining errors
+3. Clear browser cache if issues persist
+
 ## Current Status
 - ✅ Vite dev server running on port 8080
-- ✅ Ngrok tunnel active
-- ✅ Application accessible locally
+- ✅ Ngrok tunnel active with new URL
+- ✅ Application fully functional locally
+- ✅ Session creation working properly
+- ✅ Auto-reloading fixed
 - ⚠️ Requires accepting ngrok warning page for public access
+- ℹ️ 404 errors are from ngrok warning page (normal)
 
 ## Commands to Manage Tunnel
 
@@ -180,10 +188,26 @@ ngrok http 8080
 
 # Check local server
 curl http://localhost:8080
+
+# Kill all Vite processes (if auto-reloading issues)
+pkill -f vite
+npm run dev
 ```
 
+## Solutions for 404 Errors:
+
+### Immediate Solution:
+1. **Accept the ngrok warning page**
+2. **Use localhost:8080 for development**
+3. **Ignore the 404 errors - they're from ngrok, not your app**
+
+### Long-term Solutions:
+1. **Upgrade to ngrok paid plan** (no warning page)
+2. **Deploy to Vercel/Netlify** (no ngrok needed)
+3. **Use localhost for development** (no 404s)
+
 ## Next Steps
-1. Share the URL: https://c9f9-173-219-115-5.ngrok-free.app
-2. Instruct users to accept the warning page
-3. Test all features after accepting the warning
-4. Consider upgrading to ngrok paid plan for no warning page 
+1. **Share URL**: https://21b0-173-219-115-5.ngrok-free.app
+2. **Instruct users**: Accept the warning page
+3. **Test features**: After accepting warning, all features work
+4. **Consider deployment**: For production, deploy to a hosting platform 
