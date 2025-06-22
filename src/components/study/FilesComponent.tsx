@@ -31,48 +31,6 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
     }
   };
 
-  const extractTextFromPDF = async (file: File): Promise<string> => {
-    try {
-      // First validate the PDF extraction
-      const validation = await validatePDFExtraction(file);
-      
-      if (!validation.success) {
-        console.warn("PDF validation failed:", validation.issues);
-        return validation.sample || `Failed to extract text from ${file.name}. ${validation.issues.join(', ')}`;
-      }
-      
-      // Log validation results for debugging
-      console.log(`PDF validation results for ${file.name}:`, {
-        quality: validation.quality,
-        textLength: validation.textLength,
-        pagesExtracted: validation.pagesExtracted,
-        issues: validation.issues
-      });
-      
-      // Extract the actual text
-      const extractedContent = await extractTextFromPDF(file);
-      
-      // Provide user feedback based on quality
-      if (validation.quality === 'poor') {
-        toast({
-          title: "Warning",
-          description: `PDF extraction quality is poor. ${validation.issues.join(', ')}`,
-          variant: "destructive",
-        });
-      } else if (validation.quality === 'fair') {
-        toast({
-          title: "Notice",
-          description: "PDF extraction quality is fair. Some content may be missing.",
-        });
-      }
-      
-      return extractedContent;
-    } catch (error) {
-      console.error("Error extracting PDF text:", error);
-      return `Failed to extract text from ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}. File size: ${(file.size / 1024).toFixed(1)}KB. This may be an encrypted, corrupted, or image-only PDF.`;
-    }
-  };
-
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -102,9 +60,26 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
         
         console.log(`Processing file: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
         
+        // First validate the PDF extraction
+        const validation = await validatePDFExtraction(file);
+        
         // Extract text content from PDF
         const extractedContent = await extractTextFromPDF(file);
         console.log("Extracted content length:", extractedContent.length);
+        
+        // Provide user feedback based on quality
+        if (validation.quality === 'poor') {
+          toast({
+            title: "Warning",
+            description: `PDF extraction quality is poor. ${validation.issues.join(', ')}`,
+            variant: "destructive",
+          });
+        } else if (validation.quality === 'fair') {
+          toast({
+            title: "Notice",
+            description: "PDF extraction quality is fair. Some content may be missing.",
+          });
+        }
         
         const newFile: FileItem = {
           id: `file_${Date.now()}_${i}`,

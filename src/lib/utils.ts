@@ -11,8 +11,10 @@ export function cn(...inputs: ClassValue[]) {
  */
 export async function extractTextFromPDF(file: File | Blob): Promise<string> {
   try {
-    // Set up the worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
+    // Set up the worker with correct path
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    }
     
     // Convert file to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
@@ -22,8 +24,7 @@ export async function extractTextFromPDF(file: File | Blob): Promise<string> {
       data: arrayBuffer,
       useWorkerFetch: false,
       isEvalSupported: false,
-      useSystemFonts: true,
-      standardFontDataUrl: '/standard_fonts/'
+      useSystemFonts: true
     }).promise;
     
     console.log(`PDF loaded successfully. Pages: ${pdf.numPages}, File size: ${(file.size / 1024).toFixed(1)}KB`);
@@ -50,8 +51,7 @@ export async function extractTextFromPDF(file: File | Blob): Promise<string> {
           .filter((item): item is TextItem => {
             // Filter out empty strings and very short fragments
             return typeof item.str === 'string' && 
-                   item.str.trim().length > 0 && 
-                   item.str.trim().length > 1; // Skip single characters
+                   item.str.trim().length > 0;
           })
           .map((item: TextItem) => item.str.trim())
           .join(' ');
@@ -74,11 +74,10 @@ export async function extractTextFromPDF(file: File | Blob): Promise<string> {
     const cleanedText = fullText
       .replace(/\s+/g, ' ') // Normalize whitespace
       .replace(/\n\s*\n/g, '\n') // Remove excessive line breaks
-      .replace(/[^\w\s.,!?;:()[\]{}"'\-–—…]/g, '') // Remove problematic characters
       .trim();
     
     console.log(`Final extraction: ${cleanedText.length} characters from ${extractedPages}/${pdf.numPages} pages`);
-    console.log(`Average text per page: ${Math.round(totalTextLength / extractedPages)} characters`);
+    console.log(`Average text per page: ${extractedPages > 0 ? Math.round(totalTextLength / extractedPages) : 0} characters`);
     
     // Comprehensive validation and fallback messages
     if (cleanedText.length === 0) {
