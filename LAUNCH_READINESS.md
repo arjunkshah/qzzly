@@ -24,7 +24,7 @@
 - ✅ File content storage and retrieval
 - ✅ AI-powered file summarization
 
-### 3. **AI Integration (OpenAI GPT-4)**
+### 3. **AI Integration (Gemini API)**
 - ✅ API key properly configured
 - ✅ Rate limiting implemented (1 second between requests)
 - ✅ Token management and content chunking
@@ -60,7 +60,7 @@
 - ✅ All core dependencies installed
 - ✅ React 18.3.1 with latest features
 - ✅ PDF.js for document processing
-- ✅ OpenAI API integration
+- ✅ Gemini API integration
 - ✅ React Query for state management
 
 ### **Deployment Configuration**

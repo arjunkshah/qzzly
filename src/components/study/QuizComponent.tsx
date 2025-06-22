@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Quiz, Question, FileItem, Flashcard } from "@/types/session";
 import { addQuiz, getSessionById } from "@/services/sessionService";
-import { generateQuiz } from "@/services/openaiService";
+import { generateQuiz } from "@/services/geminiService";
 import { Check, Plus, Sparkles, Settings, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
