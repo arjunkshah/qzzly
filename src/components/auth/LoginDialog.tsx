@@ -38,7 +38,7 @@ interface LoginDialogProps {
 
 export function LoginDialog({ children }: LoginDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -96,7 +96,7 @@ export function LoginDialog({ children }: LoginDialogProps) {
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="password"
@@ -110,12 +110,15 @@ export function LoginDialog({ children }: LoginDialogProps) {
                 </FormItem>
               )}
             />
-            
+
             <div className="flex justify-end pt-2">
               <Button type="submit" className="gradient-bg" disabled={isLoading}>
                 {isLoading ? 'Logging in...' : 'Log in'}
               </Button>
             </div>
+            <Button type="button" variant="outline" className="w-full mt-2" onClick={signInWithGoogle}>
+              Continue with Google
+            </Button>
           </form>
         </Form>
       </DialogContent>
