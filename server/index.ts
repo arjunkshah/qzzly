@@ -1,12 +1,20 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
+import { User } from '../src/types/user';
+import { StudySession, ChatMessage, Flashcard } from '../src/types/session';
 
 const app: Express = express();
 const port = process.env.PORT || 3001;
 
-// In-memory database
-const db: { [key: string]: any } = {
+// In-memory database with proper types
+interface Database {
+  users: User[];
+  sessions: StudySession[];
+  messages: Record<string, ChatMessage[]>;
+}
+
+const db: Database = {
   users: [],
   sessions: [],
   messages: {},
@@ -29,7 +37,7 @@ app.get('/users', (req: Request, res: Response) => {
 
 // Get user by ID
 app.get('/users/:id', (req: Request, res: Response) => {
-  const user = db.users.find((u: any) => u.id === req.params.id);
+  const user = db.users.find((u) => u.id === req.params.id);
   if (user) {
     res.json(user);
   } else {
@@ -39,20 +47,24 @@ app.get('/users/:id', (req: Request, res: Response) => {
 
 // Create a new user (signup)
 app.post('/users', (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, name } = req.body;
   if (!email || !password) {
     return res.status(400).send('Email and password are required');
   }
-  const existingUser = db.users.find((u: any) => u.email === email);
+  const existingUser = db.users.find((u) => u.email === email);
   if (existingUser) {
     return res.status(409).send('User with this email already exists');
   }
-  const newUser = {
+  const newUser: User = {
     id: `user_${Date.now()}`,
     email,
-    password, // In a real app, hash this!
-    plan: 'free',
+    name: name || email,
+    // @ts-ignore - password is not part of the User type, but needed for login
+    password,
+    subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
     sessionCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   db.users.push(newUser);
   res.status(201).json(newUser);
@@ -61,7 +73,8 @@ app.post('/users', (req: Request, res: Response) => {
 // Login
 app.post('/login', (req: Request, res: Response) => {
   const { email, password } = req.body;
-  const user = db.users.find((u: any) => u.email === email && u.password === password);
+  // @ts-ignore
+  const user = db.users.find((u) => u.email === email && u.password === password);
   if (user) {
     res.json(user);
   } else {
@@ -71,7 +84,7 @@ app.post('/login', (req: Request, res: Response) => {
 
 // Increment session count
 app.post('/users/:id/increment-session', (req: Request, res: Response) => {
-  const user = db.users.find((u: any) => u.id === req.params.id);
+  const user = db.users.find((u) => u.id === req.params.id);
   if (user) {
     user.sessionCount += 1;
     res.json(user);
@@ -89,7 +102,7 @@ app.get('/sessions', (req: Request, res: Response) => {
 
 // Get session by ID
 app.get('/sessions/:id', (req: Request, res: Response) => {
-  const session = db.sessions.find((s: any) => s.id === req.params.id);
+  const session = db.sessions.find((s) => s.id === req.params.id);
   if (session) {
     res.json(session);
   } else {
@@ -103,7 +116,7 @@ app.post('/sessions', (req: Request, res: Response) => {
   if (!title) {
     return res.status(400).send('Title is required');
   }
-  const newSession = {
+  const newSession: StudySession = {
     id: `session_${Date.now()}`,
     title,
     description: description || '',
@@ -112,6 +125,7 @@ app.post('/sessions', (req: Request, res: Response) => {
     files: [],
     flashcards: [],
     quizzes: [],
+    studyMaterials: [],
   };
   db.sessions.push(newSession);
   // Also initialize chat messages for this session
@@ -121,7 +135,7 @@ app.post('/sessions', (req: Request, res: Response) => {
 
 // Delete a session
 app.delete('/sessions/:id', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s: any) => s.id === req.params.id);
+  const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     db.sessions.splice(index, 1);
     delete db.messages[req.params.id];
@@ -133,7 +147,7 @@ app.delete('/sessions/:id', (req: Request, res: Response) => {
 
 // Update a session
 app.put('/sessions/:id', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s: any) => s.id === req.params.id);
+  const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     db.sessions[index] = { ...db.sessions[index], ...req.body, updatedAt: new Date().toISOString() };
     res.json(db.sessions[index]);
@@ -144,7 +158,7 @@ app.put('/sessions/:id', (req: Request, res: Response) => {
 
 // Add a file to a session
 app.post('/sessions/:id/files', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s: any) => s.id === req.params.id);
+  const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     const newFile = { ...req.body, id: `file_${Date.now()}` };
     db.sessions[index].files.push(newFile);
@@ -156,9 +170,9 @@ app.post('/sessions/:id/files', (req: Request, res: Response) => {
 
 // Remove a file from a session
 app.delete('/sessions/:id/files/:fileId', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s: any) => s.id === req.params.id);
+  const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
-    db.sessions[index].files = db.sessions[index].files.filter((f: any) => f.id !== req.params.fileId);
+    db.sessions[index].files = db.sessions[index].files.filter((f) => f.id !== req.params.fileId);
     res.json(db.sessions[index]);
   } else {
     res.status(404).send('Session not found');
@@ -174,7 +188,7 @@ app.get('/sessions/:id/messages', (req: Request, res: Response) => {
     res.json(messages);
   } else {
     // If a session exists but has no messages, return an empty array
-    const session = db.sessions.find((s: any) => s.id === req.params.id);
+    const session = db.sessions.find((s) => s.id === req.params.id);
     if (session) {
       res.json([]);
     } else {
@@ -190,12 +204,12 @@ app.post('/sessions/:id/messages', (req: Request, res: Response) => {
     return res.status(400).send('Role and content are required');
   }
 
-  const session = db.sessions.find((s: any) => s.id === req.params.id);
+  const session = db.sessions.find((s) => s.id === req.params.id);
   if (!session) {
     return res.status(404).send('Session not found');
   }
 
-  const newMessage = {
+  const newMessage: ChatMessage = {
     id: `msg_${Date.now()}`,
     role,
     content,
@@ -214,10 +228,10 @@ app.post('/sessions/:id/messages', (req: Request, res: Response) => {
 
 // Add flashcards to a session
 app.post('/sessions/:id/flashcards', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s: any) => s.id === req.params.id);
+  const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     const { flashcards } = req.body;
-    const newFlashcards = flashcards.map((f: any) => ({ ...f, id: `fc_${Date.now()}_${Math.random()}` }));
+    const newFlashcards = flashcards.map((f: Omit<Flashcard, 'id'>) => ({ ...f, id: `fc_${Date.now()}_${Math.random()}` }));
     db.sessions[index].flashcards.push(...newFlashcards);
     res.status(201).json(db.sessions[index]);
   } else {
@@ -227,7 +241,7 @@ app.post('/sessions/:id/flashcards', (req: Request, res: Response) => {
 
 // Add a quiz to a session
 app.post('/sessions/:id/quizzes', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s: any) => s.id === req.params.id);
+  const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     const { quiz } = req.body;
     const newQuiz = { ...quiz, id: `quiz_${Date.now()}` };

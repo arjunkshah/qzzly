@@ -4,7 +4,7 @@ const API_BASE_URL = 'http://localhost:3001';
 export const apiRequest = async <T>(
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-  body?: any
+  body?: Record<string, unknown> | unknown[]
 ): Promise<T> => {
   const config: RequestInit = {
     method,

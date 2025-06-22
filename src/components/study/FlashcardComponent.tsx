@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard, FileItem } from "@/types/session";
-import { addFlashcards, toggleFlashcardMastery, updateSession } from "@/services/sessionService";
+import { addFlashcards, updateSession } from "@/services/sessionService";
 import { generateFlashcards } from "@/services/openaiService";
 import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -113,9 +113,13 @@ export function FlashcardComponent({
   };
 
   const handleToggleMastery = async (id: string) => {
+    const updatedFlashcards = flashcards.map(f =>
+      f.id === id ? { ...f, mastered: !f.mastered } : f
+    );
+
     try {
-      await toggleFlashcardMastery(sessionId, id);
-      onMasteryToggled(id, true);
+      await updateSession(sessionId, { flashcards: updatedFlashcards });
+      onMasteryToggled(id, !flashcards.find(f => f.id === id)?.mastered);
       
       // Automatically move to next card after marking as mastered
       if (currentIndex < flashcards.length - 1) {
@@ -124,7 +128,7 @@ export function FlashcardComponent({
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update flashcard",
+        description: "Failed to update flashcard status",
         variant: "destructive",
       });
     }
