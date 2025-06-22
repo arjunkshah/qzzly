@@ -44,7 +44,7 @@ interface SignupDialogProps {
 
 export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { signup, isLoading } = useAuth();
+  const { signup, isLoading, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -152,6 +152,9 @@ export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDia
                 {isLoading ? 'Creating account...' : 'Sign up'}
               </Button>
             </div>
+            <Button type="button" variant="outline" className="w-full mt-2" onClick={signInWithGoogle}>
+              Continue with Google
+            </Button>
           </form>
         </Form>
       </DialogContent>

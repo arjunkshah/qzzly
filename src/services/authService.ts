@@ -1,13 +1,25 @@
 import { User, LoginFormData, SignupFormData } from '@/types/user';
-import { apiRequest } from './apiService';
+import { supabase } from './supabaseClient';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 const CURRENT_USER_KEY = 'quiz_io_current_user';
 
-// Get current user from local storage
+const mapUser = (sbUser: SupabaseUser): User => {
+  const meta = sbUser.user_metadata || {};
+  return {
+    id: sbUser.id,
+    email: sbUser.email,
+    name: meta.name || sbUser.email,
+    subscription: meta.subscription || { plan: 'free', status: 'active', startDate: sbUser.created_at },
+    sessionCount: meta.sessionCount || 0,
+    createdAt: sbUser.created_at,
+    updatedAt: sbUser.updated_at || sbUser.created_at,
+  };
+};
+
 export const getCurrentUser = (): User | null => {
   const userData = localStorage.getItem(CURRENT_USER_KEY);
   if (!userData) return null;
-
   try {
     return JSON.parse(userData);
   } catch {
@@ -15,7 +27,6 @@ export const getCurrentUser = (): User | null => {
   }
 };
 
-// Set current user in local storage
 const setCurrentUser = (user: User | null) => {
   if (user) {
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
@@ -24,48 +35,55 @@ const setCurrentUser = (user: User | null) => {
   }
 };
 
-// Login user
 export const loginUser = async (data: LoginFormData): Promise<User> => {
-  const user = await apiRequest<User>('/api/login', 'POST', data);
+  const { data: res, error } = await supabase.auth.signInWithPassword({
+    email: data.email,
+    password: data.password,
+  });
+  if (error || !res.user) throw error || new Error('Login failed');
+  const user = mapUser(res.user);
   setCurrentUser(user);
   return user;
 };
 
-// Signup user
 export const signupUser = async (data: SignupFormData): Promise<User> => {
-  const newUser = await apiRequest<User>('/api/users', 'POST', data);
-  setCurrentUser(newUser);
-  return newUser;
+  const { data: res, error } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: { data: { name: data.name, sessionCount: 0, subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() } } },
+  });
+  if (error || !res.user) throw error || new Error('Signup failed');
+  const user = mapUser(res.user);
+  setCurrentUser(user);
+  return user;
 };
 
-// Logout user
-export const logoutUser = (): void => {
+export const signInWithGoogle = async (): Promise<void> => {
+  const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+  if (error) throw error;
+};
+
+export const logoutUser = async (): Promise<void> => {
+  await supabase.auth.signOut();
   setCurrentUser(null);
-  // Also clear sessions to prevent mismatches after logout
   localStorage.removeItem('quiz_io_sessions');
 };
 
-// Check if user can create more sessions
 export const canCreateSession = (user: User): boolean => {
-  if (user.subscription.plan === 'pro') {
-    return true;
-  }
+  if (user.subscription.plan === 'pro') return true;
   return user.sessionCount < 3;
 };
 
-// Increment session count for user
 export const incrementSessionCount = async (userId: string): Promise<User> => {
-  const updatedUser = await apiRequest<User>(`/api/users/${userId}/increment-session`, 'POST');
-  
-  const currentUser = getCurrentUser();
-  if (currentUser && currentUser.id === userId) {
-    setCurrentUser(updatedUser);
-  }
-  
+  const { data: { user }, error } = await supabase.auth.updateUser({
+    data: { sessionCount: (getCurrentUser()?.sessionCount || 0) + 1 },
+  });
+  if (error || !user) throw error || new Error('Unable to update user');
+  const updatedUser = mapUser(user);
+  setCurrentUser(updatedUser);
   return updatedUser;
 };
 
-// Get subscription info
 export const getSubscriptionInfo = (): { plan: 'free' | 'pro'; price: string; features: string[] } => {
   return {
     plan: 'pro',
@@ -80,7 +98,4 @@ export const getSubscriptionInfo = (): { plan: 'free' | 'pro'; price: string; fe
   };
 };
 
-// Check if promo code is valid
-export const validatePromoCode = (code: string): boolean => {
-  return code === 'BETAX';
-}; 
+export const validatePromoCode = (code: string): boolean => code === 'BETAX';
