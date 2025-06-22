@@ -5,8 +5,21 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage, FileItem } from "@/types/session";
 import { getChatMessages, addChatMessage, addFileToSession } from "@/services/sessionService";
-import { generateLongAnswer } from "@/services/openaiService";
+import { generateLongAnswer } from "@/services/geminiService";
+import { extractTextFromPDF } from "@/lib/utils";
 import { MessageSquare, Send, Upload, Plus } from "lucide-react";
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+};
 
 interface ChatComponentProps {
   sessionId: string;
@@ -69,7 +82,7 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
       
       try {
         // Generate AI response
-        const response = await generateLongAnswer(userMessageContent, "medium", files, sessionId);
+        const response = await generateLongAnswer(userMessageContent, "medium");
         
         // Add AI response to the chat
         const aiMessage = await addChatMessage(sessionId, {
@@ -123,21 +136,17 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
           continue;
         }
         
-        // Read the file content
-        const fileContent = await file.arrayBuffer();
-        const base64Content = btoa(
-          new Uint8Array(fileContent)
-            .reduce((data, byte) => data + String.fromCharCode(byte), '')
-        );
-        
-        // Create file object with content
+        const base64Data = await fileToBase64(file);
+        const extractedText = await extractTextFromPDF(file);
+
         const newFile: FileItem = {
           id: `file_${Date.now()}_${file.name}`,
           name: file.name,
           url: URL.createObjectURL(file),
           type: file.type,
           uploadedAt: new Date().toISOString(),
-          content: base64Content // Add the file content
+          content: extractedText,
+          binaryData: base64Data
         };
         
         await addFileToSession(sessionId, newFile);
@@ -165,9 +174,7 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
           // Just acknowledge the file was uploaded without explicitly asking for ingestion
           const response = await generateLongAnswer(
             `I've uploaded ${uploadedFileNames.length > 1 ? 'some files' : 'a file'} to this session.`,
-            "medium",
-            files,
-            sessionId
+            "medium"
           );
           
           const aiMessage = await addChatMessage(sessionId, {
