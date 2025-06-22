@@ -19,6 +19,8 @@ const db: Database = {
   messages: {},
 };
 
+const apiRouter = express.Router();
+
 app.use(cors());
 app.use(express.json());
 
@@ -30,12 +32,12 @@ app.get('/', (req: Request, res: Response) => {
 // --- User Authentication Endpoints ---
 
 // Get all users
-app.get('/users', (req: Request, res: Response) => {
+apiRouter.get('/users', (req: Request, res: Response) => {
   res.json(db.users);
 });
 
 // Get user by ID
-app.get('/users/:id', (req: Request, res: Response) => {
+apiRouter.get('/users/:id', (req: Request, res: Response) => {
   const user = db.users.find((u) => u.id === req.params.id);
   if (user) {
     res.json(user);
@@ -45,7 +47,7 @@ app.get('/users/:id', (req: Request, res: Response) => {
 });
 
 // Create a new user (signup)
-app.post('/users', (req: Request, res: Response) => {
+apiRouter.post('/users', (req: Request, res: Response) => {
   const { email, password, name } = req.body;
   if (!email || !password) {
     return res.status(400).send('Email and password are required');
@@ -70,7 +72,7 @@ app.post('/users', (req: Request, res: Response) => {
 });
 
 // Login
-app.post('/login', (req: Request, res: Response) => {
+apiRouter.post('/login', (req: Request, res: Response) => {
   const { email, password } = req.body;
   // @ts-expect-error - password is not part of the User type, but needed for login
   const user = db.users.find((u) => u.email === email && u.password === password);
@@ -82,7 +84,7 @@ app.post('/login', (req: Request, res: Response) => {
 });
 
 // Increment session count
-app.post('/users/:id/increment-session', (req: Request, res: Response) => {
+apiRouter.post('/users/:id/increment-session', (req: Request, res: Response) => {
   const user = db.users.find((u) => u.id === req.params.id);
   if (user) {
     user.sessionCount += 1;
@@ -95,12 +97,12 @@ app.post('/users/:id/increment-session', (req: Request, res: Response) => {
 // --- Session Management Endpoints ---
 
 // Get all sessions
-app.get('/sessions', (req: Request, res: Response) => {
+apiRouter.get('/sessions', (req: Request, res: Response) => {
   res.json(db.sessions);
 });
 
 // Get session by ID
-app.get('/sessions/:id', (req: Request, res: Response) => {
+apiRouter.get('/sessions/:id', (req: Request, res: Response) => {
   const session = db.sessions.find((s) => s.id === req.params.id);
   if (session) {
     res.json(session);
@@ -110,7 +112,7 @@ app.get('/sessions/:id', (req: Request, res: Response) => {
 });
 
 // Create a new session
-app.post('/sessions', (req: Request, res: Response) => {
+apiRouter.post('/sessions', (req: Request, res: Response) => {
   const { title, description } = req.body;
   if (!title) {
     return res.status(400).send('Title is required');
@@ -133,7 +135,7 @@ app.post('/sessions', (req: Request, res: Response) => {
 });
 
 // Delete a session
-app.delete('/sessions/:id', (req: Request, res: Response) => {
+apiRouter.delete('/sessions/:id', (req: Request, res: Response) => {
   const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     db.sessions.splice(index, 1);
@@ -145,7 +147,7 @@ app.delete('/sessions/:id', (req: Request, res: Response) => {
 });
 
 // Update a session
-app.put('/sessions/:id', (req: Request, res: Response) => {
+apiRouter.put('/sessions/:id', (req: Request, res: Response) => {
   const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     db.sessions[index] = { ...db.sessions[index], ...req.body, updatedAt: new Date().toISOString() };
@@ -156,7 +158,7 @@ app.put('/sessions/:id', (req: Request, res: Response) => {
 });
 
 // Add a file to a session
-app.post('/sessions/:id/files', (req: Request, res: Response) => {
+apiRouter.post('/sessions/:id/files', (req: Request, res: Response) => {
   const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     const newFile = { ...req.body, id: `file_${Date.now()}` };
@@ -168,7 +170,7 @@ app.post('/sessions/:id/files', (req: Request, res: Response) => {
 });
 
 // Remove a file from a session
-app.delete('/sessions/:id/files/:fileId', (req: Request, res: Response) => {
+apiRouter.delete('/sessions/:id/files/:fileId', (req: Request, res: Response) => {
   const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     db.sessions[index].files = db.sessions[index].files.filter((f) => f.id !== req.params.fileId);
@@ -181,7 +183,7 @@ app.delete('/sessions/:id/files/:fileId', (req: Request, res: Response) => {
 // --- Chat Message Endpoints ---
 
 // Get chat messages for a session
-app.get('/sessions/:id/messages', (req: Request, res: Response) => {
+apiRouter.get('/sessions/:id/messages', (req: Request, res: Response) => {
   const messages = db.messages[req.params.id];
   if (messages) {
     res.json(messages);
@@ -197,7 +199,7 @@ app.get('/sessions/:id/messages', (req: Request, res: Response) => {
 });
 
 // Add a chat message to a session
-app.post('/sessions/:id/messages', (req: Request, res: Response) => {
+apiRouter.post('/sessions/:id/messages', (req: Request, res: Response) => {
   const { role, content } = req.body;
   if (!role || !content) {
     return res.status(400).send('Role and content are required');
@@ -226,7 +228,7 @@ app.post('/sessions/:id/messages', (req: Request, res: Response) => {
 // --- Flashcard and Quiz Endpoints ---
 
 // Add flashcards to a session
-app.post('/sessions/:id/flashcards', (req: Request, res: Response) => {
+apiRouter.post('/sessions/:id/flashcards', (req: Request, res: Response) => {
   const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     const { flashcards } = req.body;
@@ -239,7 +241,7 @@ app.post('/sessions/:id/flashcards', (req: Request, res: Response) => {
 });
 
 // Add a quiz to a session
-app.post('/sessions/:id/quizzes', (req: Request, res: Response) => {
+apiRouter.post('/sessions/:id/quizzes', (req: Request, res: Response) => {
   const index = db.sessions.findIndex((s) => s.id === req.params.id);
   if (index !== -1) {
     const { quiz } = req.body;
@@ -252,7 +254,7 @@ app.post('/sessions/:id/quizzes', (req: Request, res: Response) => {
 });
 
 // Toggle flashcard mastery
-app.put('/sessions/:sessionId/flashcards/:flashcardId/toggle-mastery', (req: Request, res: Response) => {
+apiRouter.put('/sessions/:sessionId/flashcards/:flashcardId/toggle-mastery', (req: Request, res: Response) => {
   const session = db.sessions.find((s) => s.id === req.params.sessionId);
   if (session) {
     const flashcard = session.flashcards.find((f) => f.id === req.params.flashcardId);
@@ -266,6 +268,8 @@ app.put('/sessions/:sessionId/flashcards/:flashcardId/toggle-mastery', (req: Req
     res.status(404).send('Session not found');
   }
 });
+
+app.use('/api', apiRouter);
 
 // --- API Endpoints ---
 // We will add endpoints for users, sessions, and messages here.
