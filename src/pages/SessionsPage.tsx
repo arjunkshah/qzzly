@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/NavBar";
@@ -37,6 +36,10 @@ export default function SessionsPage() {
       setNewSessionTitle("");
       setNewSessionDescription("");
       setDialogOpen(false);
+      toast({
+        title: "Success",
+        description: `"${newSession.title}" has been created successfully.`,
+      });
     },
     onError: () => {
       toast({
@@ -69,6 +72,10 @@ export default function SessionsPage() {
       queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) =>
         old.filter((s) => s.id !== id)
       );
+      toast({
+        title: "Success",
+        description: "Session has been deleted successfully.",
+      });
     },
     onError: () => {
       toast({

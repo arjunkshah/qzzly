@@ -1,5 +1,4 @@
 import { StudySession, FileItem, Flashcard, Quiz, ChatMessage, StudyMaterial } from "@/types/session";
-import { toast } from "@/hooks/use-toast";
 import { 
   generateWithOpenAI, 
   generateFlashcards, 
@@ -206,11 +205,6 @@ export const createSession = (sessionData: Partial<StudySession>): Promise<Study
     ];
     localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
     
-    toast({
-      title: "Session created",
-      description: `"${newSession.title}" has been created successfully.`
-    });
-    
     setTimeout(() => resolve(newSession), 300); // Simulate API delay
   });
 };
@@ -227,11 +221,6 @@ export const deleteSession = (id: string): Promise<void> => {
     delete messages[id];
     localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
     
-    toast({
-      title: "Session deleted",
-      description: "The study session has been deleted."
-    });
-    
     setTimeout(() => resolve(), 300); // Simulate API delay
   });
 };
@@ -243,11 +232,6 @@ export const updateSession = (id: string, updates: Partial<StudySession>): Promi
     const index = sessions.findIndex((s: StudySession) => s.id === id);
     
     if (index === -1) {
-      toast({
-        title: "Error",
-        description: "Session not found",
-        variant: "destructive"
-      });
       reject(new Error("Session not found"));
       return;
     }
@@ -260,11 +244,6 @@ export const updateSession = (id: string, updates: Partial<StudySession>): Promi
     
     sessions[index] = updatedSession;
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-    
-    toast({
-      title: "Session updated",
-      description: `"${updatedSession.title}" has been updated.`
-    });
     
     setTimeout(() => resolve(updatedSession), 300); // Simulate API delay
   });
@@ -306,21 +285,11 @@ export const addFileToSession = async (sessionId: string, file: FileItem): Promi
       })
       .catch(error => {
         console.error('Error ingesting file:', error);
-        toast({
-          title: "Error",
-          description: `Failed to process ${file.name}. Please try uploading again.`,
-          variant: "destructive"
-        });
       });
 
     return sessions[sessionIndex];
   } catch (error) {
     console.error('Error in addFileToSession:', error);
-    toast({
-      title: "Error",
-      description: "Failed to add file. Please try again.",
-      variant: "destructive"
-    });
     throw error;
   }
 };
@@ -355,11 +324,6 @@ export const removeFileFromSession = (sessionId: string, fileId: string): Promis
       setTimeout(() => resolve(sessions[sessionIndex]), 300); // Simulate API delay
     } catch (error) {
       console.error('Error in removeFileFromSession:', error);
-      toast({
-        title: "Error",
-        description: "Failed to remove file. Please try again.",
-        variant: "destructive"
-      });
       reject(error);
     }
   });
@@ -558,11 +522,6 @@ export const generateFlashcardsWithOpenAI = async (
     return savedFlashcards;
   } catch (error) {
     console.error("Error generating flashcards:", error);
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to generate flashcards",
-      variant: "destructive"
-    });
     throw error;
   }
 };
@@ -604,11 +563,6 @@ export const generateStudyMaterialWithOpenAI = async (
     return newMaterial;
   } catch (error) {
     console.error("Error generating study material:", error);
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to generate study material",
-      variant: "destructive"
-    });
     throw error;
   }
 };
@@ -631,11 +585,6 @@ export const generateLongAnswerWithOpenAI = async (
     return answer;
   } catch (error) {
     console.error("Error generating long answer:", error);
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to generate answer",
-      variant: "destructive"
-    });
     throw error;
   }
 };
