@@ -26,14 +26,14 @@ const setCurrentUser = (user: User | null) => {
 
 // Login user
 export const loginUser = async (data: LoginFormData): Promise<User> => {
-  const user = await apiRequest<User>('/login', 'POST', data);
+  const user = await apiRequest<User>('/api/login', 'POST', data);
   setCurrentUser(user);
   return user;
 };
 
 // Signup user
 export const signupUser = async (data: SignupFormData): Promise<User> => {
-  const newUser = await apiRequest<User>('/users', 'POST', data);
+  const newUser = await apiRequest<User>('/api/users', 'POST', data);
   setCurrentUser(newUser);
   return newUser;
 };
@@ -53,7 +53,7 @@ export const canCreateSession = (user: User): boolean => {
 
 // Increment session count for user
 export const incrementSessionCount = async (userId: string): Promise<User> => {
-  const updatedUser = await apiRequest<User>(`/users/${userId}/increment-session`, 'POST');
+  const updatedUser = await apiRequest<User>(`/api/users/${userId}/increment-session`, 'POST');
   
   const currentUser = getCurrentUser();
   if (currentUser && currentUser.id === userId) {
