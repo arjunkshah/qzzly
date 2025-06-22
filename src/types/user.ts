@@ -23,7 +23,6 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
-  updateSubscription: (plan: 'free' | 'pro', promoCode?: string) => Promise<boolean>;
   isLoading: boolean;
 }
 

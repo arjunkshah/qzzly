@@ -41,6 +41,8 @@ export const signupUser = async (data: SignupFormData): Promise<User> => {
 // Logout user
 export const logoutUser = (): void => {
   setCurrentUser(null);
+  // Also clear sessions to prevent mismatches after logout
+  localStorage.removeItem('quiz_io_sessions');
 };
 
 // Check if user can create more sessions
@@ -61,80 +63,6 @@ export const incrementSessionCount = async (userId: string): Promise<User> => {
   }
   
   return updatedUser;
-};
-
-// Decrement session count for user
-export const decrementSessionCount = (userId: string): void => {
-  const users = getUsers();
-  const userIndex = users.findIndex(u => u.id === userId);
-  
-  if (userIndex !== -1 && users[userIndex].sessionCount > 0) {
-    users[userIndex].sessionCount -= 1;
-    users[userIndex].updatedAt = new Date().toISOString();
-    saveUsers(users);
-    
-    // Update current user if it's the same user
-    const currentUser = getCurrentUser();
-    if (currentUser && currentUser.id === userId) {
-      setCurrentUser(users[userIndex]);
-    }
-  }
-};
-
-// Update subscription
-export const updateSubscription = async (
-  userId: string, 
-  plan: 'free' | 'pro', 
-  promoCode?: string
-): Promise<boolean> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const users = getUsers();
-      const userIndex = users.findIndex(u => u.id === userId);
-      
-      if (userIndex === -1) {
-        resolve(false);
-        return;
-      }
-      
-      // Check promo code
-      if (plan === 'pro' && promoCode === 'BETAX') {
-        // Apply promo code - free pro subscription
-        users[userIndex].subscription = {
-          plan: 'pro',
-          status: 'active',
-          startDate: new Date().toISOString(),
-        };
-      } else if (plan === 'pro') {
-        // Regular pro subscription (in real app, this would integrate with Stripe)
-        users[userIndex].subscription = {
-          plan: 'pro',
-          status: 'active',
-          startDate: new Date().toISOString(),
-          stripeCustomerId: `cus_${Date.now()}`,
-          stripeSubscriptionId: `sub_${Date.now()}`,
-        };
-      } else {
-        // Downgrade to free
-        users[userIndex].subscription = {
-          plan: 'free',
-          status: 'active',
-          startDate: new Date().toISOString(),
-        };
-      }
-      
-      users[userIndex].updatedAt = new Date().toISOString();
-      saveUsers(users);
-      
-      // Update current user if it's the same user
-      const currentUser = getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        setCurrentUser(users[userIndex]);
-      }
-      
-      resolve(true);
-    }, 500); // Simulate API delay
-  });
 };
 
 // Get subscription info

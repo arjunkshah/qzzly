@@ -9,7 +9,6 @@ import {
   loginUser, 
   signupUser, 
   logoutUser, 
-  updateSubscription, 
   getCurrentUser 
 } from '@/services/authService';
 
@@ -34,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const currentUser = getCurrentUser();
         setUser(currentUser);
       }
-      return success;
+      return !!success;
     } catch (error) {
       console.error('Login error:', error);
       return false;
@@ -51,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const currentUser = getCurrentUser();
         setUser(currentUser);
       }
-      return success;
+      return !!success;
     } catch (error) {
       console.error('Signup error:', error);
       return false;
@@ -65,32 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
-  const updateUserSubscription = async (plan: 'free' | 'pro', promoCode?: string): Promise<boolean> => {
-    if (!user) return false;
-    
-    try {
-      setIsLoading(true);
-      const success = await updateSubscription(user.id, plan, promoCode);
-      if (success) {
-        const currentUser = getCurrentUser();
-        setUser(currentUser);
-      }
-      return success;
-    } catch (error) {
-      console.error('Subscription update error:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     login,
     signup,
     logout,
-    updateSubscription: updateUserSubscription,
     isLoading
   };
 
