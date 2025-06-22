@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard, FileItem } from "@/types/session";
-import { addFlashcard, toggleFlashcardMastery, generateFlashcardsWithGemini, getSessionById, updateFlashcard, addFlashcards } from "@/services/sessionService";
+import { addFlashcards, toggleFlashcardMastery, updateSession } from "@/services/sessionService";
+import { generateFlashcards } from "@/services/openaiService";
 import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,9 +58,10 @@ export function FlashcardComponent({
     }
 
     try {
-      const newFlashcard = await addFlashcard(sessionId, { front, back, mastered: false });
-      // Here's the fix - we need to properly extract the flashcard from the returned session
-      const addedFlashcard = newFlashcard.flashcards[newFlashcard.flashcards.length - 1];
+      // Wrap the single flashcard in an array for the batch operation
+      const updatedSession = await addFlashcards(sessionId, [{ front, back, mastered: false }]);
+      const addedFlashcard = updatedSession.flashcards[updatedSession.flashcards.length - 1];
+      
       onFlashcardAdded(addedFlashcard);
       
       setFront("");
@@ -90,14 +92,9 @@ export function FlashcardComponent({
     }
 
     try {
-      await updateFlashcard(sessionId, editingFlashcard.id, editingFlashcard);
-      
-      // Update the flashcard in the local state by forcing a re-render
-      const updatedFlashcards = [...flashcards];
-      const index = updatedFlashcards.findIndex(f => f.id === editingFlashcard.id);
-      if (index !== -1) {
-        updatedFlashcards[index] = editingFlashcard;
-      }
+      await updateSession(sessionId, { 
+        flashcards: flashcards.map(f => f.id === editingFlashcard.id ? editingFlashcard : f) 
+      });
       
       setEditDialogOpen(false);
       setEditingFlashcard(null);
@@ -178,12 +175,14 @@ export function FlashcardComponent({
         prompt = `Generate ${count} educational flashcards about general study skills and learning strategies`;
       }
       
-      // Pass filesToUse to Gemini service for processing
-      const generatedCards = await generateFlashcardsWithGemini(
-        sessionId,
-        prompt,
-        generationOptions.complexity as 'easy' | 'medium' | 'hard',
-        generationOptions.count
+      const material = files.length > 0 ? files.map(f => f.content).join('\n') : prompt;
+      
+      const generatedCards = await generateFlashcards(
+        material,
+        generationOptions.count,
+        generationOptions.complexity,
+        files,
+        sessionId
       );
       
       // Batch add all flashcards at once to avoid race conditions

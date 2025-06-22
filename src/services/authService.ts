@@ -1,51 +1,13 @@
-import { User, Subscription, LoginFormData, SignupFormData } from '@/types/user';
+import { User, LoginFormData, SignupFormData } from '@/types/user';
+import { apiRequest } from './apiService';
 
-// Local storage keys
-const USERS_KEY = 'quiz_io_users';
 const CURRENT_USER_KEY = 'quiz_io_current_user';
-const SESSIONS_KEY = 'quiz_io_sessions';
 
-// Mock users for development
-const mockUsers: User[] = [
-  {
-    id: 'user_1',
-    email: 'demo@quiz.io',
-    name: 'Demo User',
-    subscription: {
-      plan: 'free',
-      status: 'active',
-      startDate: new Date().toISOString(),
-    },
-    sessionCount: 2,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-];
-
-// Initialize users in localStorage
-const initializeUsers = () => {
-  const storedUsers = localStorage.getItem(USERS_KEY);
-  if (!storedUsers) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(mockUsers));
-  }
-};
-
-// Get all users
-const getUsers = (): User[] => {
-  initializeUsers();
-  return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-};
-
-// Save users to localStorage
-const saveUsers = (users: User[]) => {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-};
-
-// Get current user
+// Get current user from local storage
 export const getCurrentUser = (): User | null => {
   const userData = localStorage.getItem(CURRENT_USER_KEY);
   if (!userData) return null;
-  
+
   try {
     return JSON.parse(userData);
   } catch {
@@ -53,7 +15,7 @@ export const getCurrentUser = (): User | null => {
   }
 };
 
-// Set current user
+// Set current user in local storage
 const setCurrentUser = (user: User | null) => {
   if (user) {
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
@@ -62,32 +24,43 @@ const setCurrentUser = (user: User | null) => {
   }
 };
 
+// Login user
+export const loginUser = async (data: LoginFormData): Promise<User> => {
+  const user = await apiRequest<User>('/login', 'POST', data);
+  setCurrentUser(user);
+  return user;
+};
+
+// Signup user
+export const signupUser = async (data: SignupFormData): Promise<User> => {
+  const newUser = await apiRequest<User>('/users', 'POST', data);
+  setCurrentUser(newUser);
+  return newUser;
+};
+
+// Logout user
+export const logoutUser = (): void => {
+  setCurrentUser(null);
+};
+
 // Check if user can create more sessions
 export const canCreateSession = (user: User): boolean => {
   if (user.subscription.plan === 'pro') {
-    return true; // Unlimited sessions for pro users
+    return true;
   }
-  
-  // Free users get 3 sessions
   return user.sessionCount < 3;
 };
 
 // Increment session count for user
-export const incrementSessionCount = (userId: string): void => {
-  const users = getUsers();
-  const userIndex = users.findIndex(u => u.id === userId);
+export const incrementSessionCount = async (userId: string): Promise<User> => {
+  const updatedUser = await apiRequest<User>(`/users/${userId}/increment-session`, 'POST');
   
-  if (userIndex !== -1) {
-    users[userIndex].sessionCount += 1;
-    users[userIndex].updatedAt = new Date().toISOString();
-    saveUsers(users);
-    
-    // Update current user if it's the same user
-    const currentUser = getCurrentUser();
-    if (currentUser && currentUser.id === userId) {
-      setCurrentUser(users[userIndex]);
-    }
+  const currentUser = getCurrentUser();
+  if (currentUser && currentUser.id === userId) {
+    setCurrentUser(updatedUser);
   }
+  
+  return updatedUser;
 };
 
 // Decrement session count for user
@@ -106,65 +79,6 @@ export const decrementSessionCount = (userId: string): void => {
       setCurrentUser(users[userIndex]);
     }
   }
-};
-
-// Login user
-export const loginUser = async (data: LoginFormData): Promise<boolean> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const users = getUsers();
-      const user = users.find(u => u.email === data.email);
-      
-      if (user) {
-        // In a real app, you'd verify the password hash
-        setCurrentUser(user);
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    }, 500); // Simulate API delay
-  });
-};
-
-// Signup user
-export const signupUser = async (data: SignupFormData): Promise<boolean> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const users = getUsers();
-      
-      // Check if user already exists
-      const existingUser = users.find(u => u.email === data.email);
-      if (existingUser) {
-        resolve(false);
-        return;
-      }
-      
-      // Create new user
-      const newUser: User = {
-        id: `user_${Date.now()}`,
-        email: data.email,
-        name: data.name,
-        subscription: {
-          plan: 'free',
-          status: 'active',
-          startDate: new Date().toISOString(),
-        },
-        sessionCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      users.push(newUser);
-      saveUsers(users);
-      setCurrentUser(newUser);
-      resolve(true);
-    }, 500); // Simulate API delay
-  });
-};
-
-// Logout user
-export const logoutUser = (): void => {
-  setCurrentUser(null);
 };
 
 // Update subscription
