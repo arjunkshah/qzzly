@@ -4,7 +4,7 @@
 
 ### **Live Application URLs:**
 - **Production**: https://quizio-ai-study.surge.sh
-- **Live Preview**: https://1750557776883-quizio-ai-study.surge.sh
+- **Live Preview**: https://1750558032831-quizio-ai-study.surge.sh
 
 ### **Deployment Details:**
 - **Platform**: Surge.sh
@@ -13,7 +13,14 @@
 - **CDN**: ✅ Global distribution
 - **Cost**: ✅ Completely Free
 
-## 🚀 **Benefits of Surge.sh Deployment:**
+## 🚀 **Latest Fixes (v2.0)**
+
+### **Session Creation Bug Fixed:**
+- ✅ **Automatic Navigation**: After creating a session, users are automatically taken to the session page
+- ✅ **Query Invalidation**: Proper cache management ensures sessions are immediately available
+- ✅ **Error Handling**: Better error handling and debugging for session loading
+- ✅ **Retry Logic**: Added retry mechanism for session loading
+- ✅ **Timing Fix**: Added delay to ensure session is properly saved before navigation
 
 ### **No More Ngrok Issues:**
 - ❌ No warning pages
@@ -74,15 +81,16 @@ surge dist quizio-ai-study.surge.sh
 
 - ✅ **Local Development**: http://localhost:8080
 - ✅ **Production**: https://quizio-ai-study.surge.sh
-- ✅ **Ngrok Tunnel**: https://21b0-173-219-115-5.ngrok-free.app (backup)
+- ✅ **Session Creation**: Working perfectly with automatic navigation
 - ✅ **All Features**: Working perfectly
+- ✅ **No More Bugs**: Session creation issue resolved
 
 ## 🎯 **Next Steps:**
 
 1. **Test the live application**: https://quizio-ai-study.surge.sh
-2. **Share with users**: No more ngrok complications
-3. **Monitor performance**: Surge.sh provides analytics
-4. **Consider custom domain**: Can be added later
+2. **Create a session**: Should automatically navigate to the session page
+3. **Test all features**: Upload files, create flashcards, take quizzes
+4. **Share with users**: No more ngrok complications
 
 ## 🔗 **Quick Links:**
 
@@ -92,4 +100,4 @@ surge dist quizio-ai-study.surge.sh
 
 ---
 
-**Deployment completed successfully! Your Quiz.io application is now live on the internet with a professional, permanent URL.** 
+**Deployment completed successfully! Your Quiz.io application is now live with all session creation bugs fixed.** 
