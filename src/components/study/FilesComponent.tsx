@@ -3,23 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileItem } from "@/types/session";
 import { addFileToSession } from "@/services/sessionService";
-import { generateFileSummary } from "@/services/geminiService";
+import { generateFileSummary as openaiGenerateFileSummary } from "@/services/openaiService";
 import { useToast } from "@/hooks/use-toast";
 import { File, Upload, Download, Trash, FileText, AlertCircle } from "lucide-react";
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import { extractTextFromPDF, validatePDFExtraction } from "@/lib/utils";
-
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]);
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-};
 
 interface FilesComponentProps {
   sessionId: string;
@@ -34,9 +22,9 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const generateSummary = async (fileBase64: string): Promise<string> => {
+  const generateFileSummary = async (fileName: string, fileContent: string): Promise<string> => {
     try {
-      return await generateFileSummary(fileBase64);
+      return await openaiGenerateFileSummary(fileName, fileContent, sessionId);
     } catch (error) {
       console.error("Error generating file summary:", error);
       return "Unable to generate summary - AI processing error occurred.";
@@ -77,7 +65,6 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
         
         // Extract text content from PDF
         const extractedContent = await extractTextFromPDF(file);
-        const base64Data = await fileToBase64(file);
         console.log("Extracted content length:", extractedContent.length);
         
         // Provide user feedback based on quality
@@ -100,8 +87,7 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
           url: URL.createObjectURL(file),
           type: file.type,
           uploadedAt: new Date().toISOString(),
-          content: extractedContent,
-          binaryData: base64Data
+          content: extractedContent
         };
         
         await addFileToSession(sessionId, newFile);
@@ -112,7 +98,7 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
         
         try {
           console.log(`Generating summary for ${file.name} with ${extractedContent.length} characters`);
-          const summary = await generateSummary(base64Data);
+          const summary = await generateFileSummary(file.name, extractedContent);
           console.log("Generated summary:", summary);
           
           // Update the file with the summary

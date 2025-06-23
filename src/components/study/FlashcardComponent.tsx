@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard, FileItem } from "@/types/session";
 import { addFlashcards, updateSession } from "@/services/sessionService";
-import { generateFlashcards } from "@/services/geminiService";
+import { generateFlashcards } from "@/services/openaiService";
 import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

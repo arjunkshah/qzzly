@@ -1,5 +1,6 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
+import { User } from '../src/types/user';
 import { StudySession, ChatMessage, Flashcard } from '../src/types/session';
 
 const app: Express = express();
@@ -7,11 +8,13 @@ const port = process.env.PORT || 3001;
 
 // In-memory database with proper types
 interface Database {
+  users: User[];
   sessions: StudySession[];
   messages: Record<string, ChatMessage[]>;
 }
 
 const db: Database = {
+  users: [],
   sessions: [],
   messages: {},
 };
@@ -26,7 +29,70 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Quiz.io server is running!');
 });
 
-// --- User Authentication Endpoints are handled by Supabase ---
+// --- User Authentication Endpoints ---
+
+// Get all users
+apiRouter.get('/users', (req: Request, res: Response) => {
+  res.json(db.users);
+});
+
+// Get user by ID
+apiRouter.get('/users/:id', (req: Request, res: Response) => {
+  const user = db.users.find((u) => u.id === req.params.id);
+  if (user) {
+    res.json(user);
+  } else {
+    res.status(404).send('User not found');
+  }
+});
+
+// Create a new user (signup)
+apiRouter.post('/users', (req: Request, res: Response) => {
+  const { email, password, name } = req.body;
+  if (!email || !password) {
+    return res.status(400).send('Email and password are required');
+  }
+  const existingUser = db.users.find((u) => u.email === email);
+  if (existingUser) {
+    return res.status(409).send('User with this email already exists');
+  }
+  const newUser: User = {
+    id: `user_${Date.now()}`,
+    email,
+    name: name || email,
+    // @ts-expect-error - password is not part of the User type, but needed for login
+    password,
+    subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
+    sessionCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  db.users.push(newUser);
+  res.status(201).json(newUser);
+});
+
+// Login
+apiRouter.post('/login', (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  // @ts-expect-error - password is not part of the User type, but needed for login
+  const user = db.users.find((u) => u.email === email && u.password === password);
+  if (user) {
+    res.json(user);
+  } else {
+    res.status(401).send('Invalid email or password');
+  }
+});
+
+// Increment session count
+apiRouter.post('/users/:id/increment-session', (req: Request, res: Response) => {
+  const user = db.users.find((u) => u.id === req.params.id);
+  if (user) {
+    user.sessionCount += 1;
+    res.json(user);
+  } else {
+    res.status(404).send('User not found');
+  }
+});
 
 // --- Session Management Endpoints ---
 
