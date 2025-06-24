@@ -11,6 +11,7 @@ import {
   logoutUser, 
   getCurrentUser 
 } from '@/services/authService';
+import { supabase } from '@/services/supabaseClient';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -64,13 +65,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  // Google OAuth with Supabase
+  const signInWithGoogle = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+      if (error) throw error;
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
       user, 
       isAuthenticated: !!user, 
       login, 
       signup, 
       logout, 
-      isLoading 
+      isLoading,
+      signInWithGoogle
   };
 
   return (

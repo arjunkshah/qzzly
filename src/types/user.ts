@@ -24,6 +24,7 @@ export interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  signInWithGoogle: () => Promise<void>;
 }
 
 export interface LoginFormData {
