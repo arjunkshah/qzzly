@@ -1,3 +1,6 @@
+// Remove custom test function implementations and use Vitest
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
+
 // Mock localStorage for testing
 class LocalStorageMock {
   store: Record<string, string> = {};
@@ -32,59 +35,20 @@ class MockFileList {
   [Symbol.iterator]() { return this.files[Symbol.iterator](); }
 }
 
-// Basic test functions
-function describe(name: string, fn: () => void) {
-  console.log(`Running test suite: ${name}`);
-  fn();
-}
-
-function beforeEach(fn: () => void) {
-  fn();
-}
-
-function afterEach(fn: () => void) {
-  fn();
-}
-
-function it(name: string, fn: () => void) {
-  console.log(`  Running test: ${name}`);
-  fn();
-}
-
-function expect(value: unknown) {
-  return {
-    toBe(expected: unknown) {
-      if (value !== expected) {
-        throw new Error(`Expected ${value} to be ${expected}`);
-      }
-    },
-    toContain(expected: string) {
-      if (typeof value === 'string' && !value.includes(expected)) {
-        throw new Error(`Expected ${value} to contain ${expected}`);
-      }
-    },
-    toBeGreaterThan(expected: number) {
-      if (typeof value === 'number' && value <= expected) {
-        throw new Error(`Expected ${value} to be greater than ${expected}`);
-      }
-    }
-  };
-}
+// Use Vitest's describe/it/beforeEach/afterEach/expect
 
 describe('Quiz.io Integration Tests', () => {
-beforeEach(() => {
+  beforeEach(() => {
     // Setup localStorage mock
     Object.defineProperty(window, 'localStorage', {
       value: new LocalStorageMock(),
       writable: true
     });
-    
     // Setup File mock
     Object.defineProperty(window, 'File', {
       value: MockFile,
       writable: true
     });
-    
     // Setup FileList mock
     Object.defineProperty(window, 'FileList', {
       value: MockFileList,
@@ -93,7 +57,7 @@ beforeEach(() => {
   });
 
   afterEach(() => {
-    localStorage.clear();
+    window.localStorage.clear();
   });
 
   it('should create a new study session', async () => {
@@ -102,7 +66,6 @@ beforeEach(() => {
       title: 'Test Session',
       description: 'Test Description'
     };
-    
     expect(sessionData.title).toBe('Test Session');
     expect(sessionData.description).toBe('Test Description');
   });
@@ -111,7 +74,6 @@ beforeEach(() => {
     // Test file upload functionality
     const mockFile = new MockFile('test.pdf', 1024, 'application/pdf');
     const mockFileList = new MockFileList([mockFile]);
-    
     expect(mockFileList.length).toBe(1);
     expect(mockFileList.item(0)?.name).toBe('test.pdf');
   });
@@ -119,7 +81,6 @@ beforeEach(() => {
   it('should generate flashcards from content', async () => {
     // Test flashcard generation
     const testContent = 'This is test content for flashcard generation';
-    
     expect(testContent.length).toBeGreaterThan(0);
     expect(testContent).toContain('flashcard');
   });

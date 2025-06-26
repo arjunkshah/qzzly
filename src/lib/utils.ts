@@ -17,7 +17,7 @@ export async function extractTextFromPDF(file: File | Blob): Promise<string> {
     }
     
     // Convert file to ArrayBuffer
-    const arrayBuffer = await file.arrayBuffer();
+  const arrayBuffer = await file.arrayBuffer();
     
     // Load the PDF document with enhanced options
     const pdf = await pdfjsLib.getDocument({ 
@@ -29,14 +29,14 @@ export async function extractTextFromPDF(file: File | Blob): Promise<string> {
     
     console.log(`PDF loaded successfully. Pages: ${pdf.numPages}, File size: ${(file.size / 1024).toFixed(1)}KB`);
     
-    let fullText = '';
+  let fullText = '';
     let extractedPages = 0;
     let totalTextLength = 0;
     
     // Extract text from each page with enhanced error handling
-    for (let i = 1; i <= pdf.numPages; i++) {
+  for (let i = 1; i <= pdf.numPages; i++) {
       try {
-        const page = await pdf.getPage(i);
+    const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         
         type TextItem = {
@@ -141,7 +141,7 @@ export async function validatePDFExtraction(file: File): Promise<{
     if (extractedText.includes('Unable to extract') || extractedText.includes('Failed to extract')) {
       quality = 'poor';
       issues.push('Extraction errors detected');
-    }
+  }
     
     if (extractedText.match(/[^\w\s.,!?;:()[\]{}"'\-–—…]/g)) {
       issues.push('Contains special characters that may indicate formatting issues');
@@ -217,8 +217,8 @@ export function chunkText(text: string, maxLength: number = 4000): string[] {
         }
         if (wordChunk) {
           currentChunk = wordChunk;
-        }
-      }
+    }
+  }
     }
   }
   

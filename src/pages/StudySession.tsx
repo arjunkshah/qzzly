@@ -156,7 +156,7 @@ export default function StudySession() {
                     ...session,
                     files: [...session.files, file]
                   });
-                }} 
+                }}
               />
             </TabsContent>
             
