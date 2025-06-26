@@ -26,6 +26,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
+  // Listen for Supabase auth state changes (Google OAuth, etc.)
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const supaUser = session.user;
+        const newUser = {
+          id: supaUser.id,
+          email: supaUser.email,
+          name: supaUser.user_metadata?.name || supaUser.email,
+          subscription: {
+            plan: 'free' as 'free',
+            status: 'active' as 'active',
+            startDate: new Date().toISOString(),
+          },
+          sessionCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setUser(newUser);
+        localStorage.setItem('quiz_io_current_user', JSON.stringify(newUser));
+      } else {
+        setUser(null);
+        localStorage.removeItem('quiz_io_current_user');
+      }
+    });
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
     setIsLoading(true);
