@@ -11,6 +11,7 @@ import aiofiles
 import subprocess
 import json
 
+# For Deta Space: expose the FastAPI app as 'app' at the module level
 app = FastAPI(title="Quiz.io PDF Processing API", version="1.0.0")
 
 # Configure CORS for production
