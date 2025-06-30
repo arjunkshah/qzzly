@@ -6,7 +6,6 @@ import { addFileToSession } from "@/services/sessionService";
 import { generateFileSummary as openaiGenerateFileSummary } from "@/services/openaiService";
 import { useToast } from "@/hooks/use-toast";
 import { File, Upload, Download, Trash, FileText, AlertCircle } from "lucide-react";
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import { extractTextFromPDF, validatePDFExtraction } from "@/lib/utils";
 
 interface FilesComponentProps {

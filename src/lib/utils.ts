@@ -5,13 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Production backend URL - will be set by environment variable or ngrok URL
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://your-ngrok-url.ngrok.io';
+
 /**
  * Extract text from PDF using the backend olmOCR FastAPI service
  */
 export async function extractTextFromPDF(file: File | Blob): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await fetch('http://localhost:8000/extract-pdf-text', {
+  const response = await fetch(`${BACKEND_URL}/extract-pdf-text`, {
     method: 'POST',
     body: formData,
   });
@@ -36,7 +39,7 @@ export async function validatePDFExtraction(file: File): Promise<{
 }> {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await fetch('http://localhost:8000/validate-pdf', {
+  const response = await fetch(`${BACKEND_URL}/validate-pdf`, {
     method: 'POST',
     body: formData,
   });
