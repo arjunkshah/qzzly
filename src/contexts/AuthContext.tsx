@@ -108,6 +108,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Add updateSubscription for promo code and Stripe
+  const updateSubscription = async (plan: 'pro', promoCode?: string): Promise<boolean> => {
+    if (!user) return false;
+    if (promoCode && promoCode.trim().toUpperCase() === 'BETAX') {
+      // Upgrade user in Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          subscription: {
+            ...user.subscription,
+            plan: 'pro',
+            status: 'active',
+            startDate: new Date().toISOString(),
+          },
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+      if (error || !data) return false;
+      setUser(data);
+      localStorage.setItem('quiz_io_current_user', JSON.stringify(data));
+      return true;
+    } else {
+      // Stripe integration (real)
+      try {
+        const response = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email }),
+        });
+        const data = await response.json();
+        if (!data.sessionId) throw new Error('No sessionId returned');
+        const stripe = (window as any).Stripe('pk_live_51RVffABQXLankofpEeazK4UBPF7EdNu7OcFKOODi3bhTaEKOQzI4vp0CjHdpXsfADS7y6FRc4TP2aHhddhgZlVIr007hUVoS0P');
+        await stripe.redirectToCheckout({ sessionId: data.sessionId });
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+  };
+
   const value: AuthContextType = {
       user, 
       isAuthenticated: !!user, 
@@ -115,7 +157,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signup, 
       logout, 
       isLoading,
-      signInWithGoogle
+      signInWithGoogle,
+      updateSubscription
   };
 
   return (

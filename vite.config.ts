@@ -24,13 +24,13 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['pdfjs-dist/build/pdf.worker.mjs'],
+    // pdfjs-dist removed
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
-          pdfjs: ['pdfjs-dist'],
+          // pdfjs removed
         },
       },
     },

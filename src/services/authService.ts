@@ -1,5 +1,5 @@
 import { User, LoginFormData, SignupFormData } from '@/types/user';
-import { apiRequest } from './apiService';
+import { supabase } from './supabaseClient';
 
 const CURRENT_USER_KEY = 'quiz_io_current_user';
 
@@ -7,7 +7,6 @@ const CURRENT_USER_KEY = 'quiz_io_current_user';
 export const getCurrentUser = (): User | null => {
   const userData = localStorage.getItem(CURRENT_USER_KEY);
   if (!userData) return null;
-
   try {
     return JSON.parse(userData);
   } catch {
@@ -24,24 +23,61 @@ const setCurrentUser = (user: User | null) => {
   }
 };
 
-// Login user
+// Login user with Supabase Auth
 export const loginUser = async (data: LoginFormData): Promise<User> => {
-  const user = await apiRequest<User>('/api/login', 'POST', data);
-  setCurrentUser(user);
-  return user;
+  const { data: authData, error } = await supabase.auth.signInWithPassword({
+    email: data.email,
+    password: data.password,
+  });
+  if (error || !authData.user) throw error || new Error('Login failed');
+
+  // Fetch user profile from users table
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', authData.user.id)
+    .single();
+  if (userError || !userData) throw userError || new Error('User profile not found');
+  setCurrentUser(userData);
+  return userData;
 };
 
-// Signup user
+// Signup user with Supabase Auth
 export const signupUser = async (data: SignupFormData): Promise<User> => {
-  const newUser = await apiRequest<User>('/api/users', 'POST', data);
-  setCurrentUser(newUser);
-  return newUser;
+  const { data: authData, error } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      data: { name: data.name },
+    },
+  });
+  if (error || !authData.user) throw error || new Error('Signup failed');
+
+  // Insert user profile into users table
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .insert([
+      {
+        id: authData.user.id,
+        email: data.email,
+        name: data.name,
+        subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
+        sessionCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ])
+    .select()
+    .single();
+  if (userError || !userData) throw userError || new Error('User profile creation failed');
+  setCurrentUser(userData);
+  return userData;
 };
 
 // Logout user
-export const logoutUser = (): void => {
+export const logoutUser = async (): Promise<void> => {
+  await supabase.auth.signOut();
   setCurrentUser(null);
-  // Also clear sessions to prevent mismatches after logout
   localStorage.removeItem('quiz_io_sessions');
 };
 
@@ -55,14 +91,23 @@ export const canCreateSession = (user: User): boolean => {
 
 // Increment session count for user
 export const incrementSessionCount = async (userId: string): Promise<User> => {
-  const updatedUser = await apiRequest<User>(`/api/users/${userId}/increment-session`, 'POST');
-  
-  const currentUser = getCurrentUser();
-  if (currentUser && currentUser.id === userId) {
-    setCurrentUser(updatedUser);
-  }
-  
-  return updatedUser;
+  // Fetch current user
+  const { data: user, error: fetchError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  if (fetchError || !user) throw fetchError || new Error('User not found');
+  // Increment
+  const { data: updated, error } = await supabase
+    .from('users')
+    .update({ sessionCount: (user.sessionCount || 0) + 1, updatedAt: new Date().toISOString() })
+    .eq('id', userId)
+    .select()
+    .single();
+  if (error || !updated) throw error || new Error('Failed to increment session count');
+  setCurrentUser(updated);
+  return updated;
 };
 
 // Get subscription info
@@ -82,5 +127,5 @@ export const getSubscriptionInfo = (): { plan: 'free' | 'pro'; price: string; fe
 
 // Check if promo code is valid
 export const validatePromoCode = (code: string): boolean => {
-  return code === 'BETAX';
+  return code.trim().toUpperCase() === 'BETAX';
 }; 

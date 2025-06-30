@@ -146,16 +146,13 @@ const PricingSection = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="promo-code">Promo Code (Optional)</Label>
+                <Label htmlFor="promo-code">Promo Code</Label>
                 <Input
                   id="promo-code"
                   placeholder="Enter promo code"
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  Use code "BETAX" for free pro access
-                </p>
               </div>
               
               <div className="flex space-x-2">

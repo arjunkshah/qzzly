@@ -1,72 +1,143 @@
 import { StudySession, FileItem, Flashcard, Quiz, ChatMessage } from "@/types/session";
-import { apiRequest } from './apiService';
-import { canCreateSession, incrementSessionCount, getCurrentUser } from "./authService";
+import { supabase } from "./supabaseClient";
+import { getCurrentUser } from "./authService";
 
 // --- Session Management ---
 
-export const getSessions = (): Promise<StudySession[]> => {
-  return apiRequest<StudySession[]>('/api/sessions');
+export const getSessions = async (): Promise<StudySession[]> => {
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("*")
+    .order("createdAt", { ascending: false });
+  if (error) throw error;
+  return data || [];
 };
 
-export const getSessionById = (id: string): Promise<StudySession | null> => {
-  return apiRequest<StudySession | null>(`/api/sessions/${id}`);
+export const getSessionById = async (id: string): Promise<StudySession | null> => {
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data;
 };
 
 export const createSession = async (sessionData: Partial<StudySession>): Promise<StudySession> => {
   const currentUser = getCurrentUser();
-  if (!currentUser) {
-    throw new Error('User must be logged in to create sessions');
-  }
-  if (!canCreateSession(currentUser)) {
-    throw new Error('Session limit reached. Upgrade to Pro for unlimited sessions.');
-  }
-  
-  const newSession = await apiRequest<StudySession>('/api/sessions', 'POST', sessionData);
-  await incrementSessionCount(currentUser.id);
-  
-  return newSession;
+  if (!currentUser) throw new Error("User must be logged in to create sessions");
+  const { data, error } = await supabase
+    .from("sessions")
+    .insert([{ ...sessionData, user_id: currentUser.id }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 };
 
-export const deleteSession = (id: string): Promise<void> => {
-  return apiRequest<void>(`/api/sessions/${id}`, 'DELETE');
+export const deleteSession = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from("sessions")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
 };
 
-export const updateSession = (id: string, updates: Partial<StudySession>): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/api/sessions/${id}`, 'PUT', updates);
+export const updateSession = async (id: string, updates: Partial<StudySession>): Promise<StudySession> => {
+  const { data, error } = await supabase
+    .from("sessions")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 };
 
 // --- File Management ---
 
-export const addFileToSession = (sessionId: string, file: Omit<FileItem, 'id' | 'url' | 'uploadedAt'>): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/api/sessions/${sessionId}/files`, 'POST', file);
+export const addFileToSession = async (sessionId: string, file: Omit<FileItem, 'id' | 'url' | 'uploadedAt'>): Promise<FileItem> => {
+  const { data, error } = await supabase
+    .from("files")
+    .insert([{ ...file, session_id: sessionId }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 };
 
-export const removeFileFromSession = (sessionId: string, fileId: string): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/api/sessions/${sessionId}/files/${fileId}`, 'DELETE');
+export const removeFileFromSession = async (sessionId: string, fileId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("files")
+    .delete()
+    .eq("id", fileId)
+    .eq("session_id", sessionId);
+  if (error) throw error;
 };
 
 // --- Chat Messages ---
 
-export const getChatMessages = (sessionId: string): Promise<ChatMessage[]> => {
-  return apiRequest<ChatMessage[]>(`/api/sessions/${sessionId}/messages`);
+export const getChatMessages = async (sessionId: string): Promise<ChatMessage[]> => {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("*")
+    .eq("session_id", sessionId)
+    .order("timestamp", { ascending: true });
+  if (error) throw error;
+  return data || [];
 };
 
-export const addChatMessage = (sessionId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>): Promise<ChatMessage> => {
-  return apiRequest<ChatMessage>(`/api/sessions/${sessionId}/messages`, 'POST', message);
+export const addChatMessage = async (sessionId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>): Promise<ChatMessage> => {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .insert([{ ...message, session_id: sessionId }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 };
 
 // --- Flashcards ---
 
-export const addFlashcards = (sessionId: string, flashcards: Omit<Flashcard, 'id'>[]): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/api/sessions/${sessionId}/flashcards`, 'POST', { flashcards });
+export const addFlashcards = async (sessionId: string, flashcards: Omit<Flashcard, 'id'>[]): Promise<Flashcard[]> => {
+  const inserts = flashcards.map(f => ({ ...f, session_id: sessionId }));
+  const { data, error } = await supabase
+    .from("flashcards")
+    .insert(inserts)
+    .select();
+  if (error) throw error;
+  return data || [];
 };
 
-export const toggleFlashcardMastery = (sessionId: string, flashcardId: string): Promise<Flashcard> => {
-  return apiRequest<Flashcard>(`/api/sessions/${sessionId}/flashcards/${flashcardId}/toggle-mastery`, 'PUT');
+export const toggleFlashcardMastery = async (sessionId: string, flashcardId: string): Promise<Flashcard> => {
+  // Fetch current state
+  const { data: card, error: fetchError } = await supabase
+    .from("flashcards")
+    .select("*")
+    .eq("id", flashcardId)
+    .eq("session_id", sessionId)
+    .single();
+  if (fetchError || !card) throw fetchError || new Error("Flashcard not found");
+  // Toggle
+  const { data, error } = await supabase
+    .from("flashcards")
+    .update({ mastered: !card.mastered })
+    .eq("id", flashcardId)
+    .eq("session_id", sessionId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 };
 
 // --- Quizzes ---
 
-export const addQuiz = (sessionId: string, quiz: Omit<Quiz, 'id'>): Promise<StudySession> => {
-  return apiRequest<StudySession>(`/api/sessions/${sessionId}/quizzes`, 'POST', { quiz });
+export const addQuiz = async (sessionId: string, quiz: Omit<Quiz, 'id'>): Promise<Quiz> => {
+  const { data, error } = await supabase
+    .from("quizzes")
+    .insert([{ ...quiz, session_id: sessionId }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }; 

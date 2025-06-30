@@ -35,7 +35,7 @@ const NotFound = () => {
           <Button variant="ghost" className="mt-2 text-purple-600 hover:underline" asChild>
             <a href="/">Back to Home</a>
           </Button>
-        </div>
+      </div>
       </main>
       <Footer />
     </div>

@@ -1,23 +1,37 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
+import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 import { User } from '../src/types/user';
 import { StudySession, ChatMessage, Flashcard } from '../src/types/session';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app: Express = express();
 const port = process.env.PORT || 3001;
 
-// In-memory database with proper types
-interface Database {
-  users: User[];
-  sessions: StudySession[];
-  messages: Record<string, ChatMessage[]>;
+// --- Supabase Setup ---
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+let supabase: ReturnType<typeof createClient>;
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Warning: SUPABASE_URL or SUPABASE_ANON_KEY not set. Supabase will not be available.');
+  supabase = {
+    from: () => ({ select: async () => ({ data: [], error: { message: 'Supabase not configured' } }), insert: async () => ({ data: null, error: { message: 'Supabase not configured' } }), update: async () => ({ data: null, error: { message: 'Supabase not configured' } }), delete: async () => ({ error: { message: 'Supabase not configured' } }) })
+  } as any;
+} else {
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
 }
 
-const db: Database = {
-  users: [],
-  sessions: [],
-  messages: {},
-};
+// --- Stripe Setup (placeholder) ---
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+let stripe: Stripe | any;
+if (!stripeSecret) {
+  console.warn('Warning: STRIPE_SECRET_KEY not set. Stripe will not be available.');
+  stripe = {};
+} else {
+  stripe = new Stripe(stripeSecret);
+}
 
 const apiRouter = express.Router();
 
@@ -29,253 +43,164 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Quiz.io server is running!');
 });
 
-// --- User Authentication Endpoints ---
+// --- User Authentication Endpoints (Supabase) ---
 
 // Get all users
-apiRouter.get('/users', (req: Request, res: Response) => {
-  res.json(db.users);
+apiRouter.get('/users', async (req: Request, res: Response) => {
+  const { data, error } = await supabase.from('users').select('*');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // Get user by ID
-apiRouter.get('/users/:id', (req: Request, res: Response) => {
-  const user = db.users.find((u) => u.id === req.params.id);
-  if (user) {
-    res.json(user);
-  } else {
-    res.status(404).send('User not found');
-  }
+apiRouter.get('/users/:id', async (req: Request, res: Response) => {
+  const { data, error } = await supabase.from('users').select('*').eq('id', req.params.id).single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json(data);
 });
 
 // Create a new user (signup)
-apiRouter.post('/users', (req: Request, res: Response) => {
+apiRouter.post('/users', async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
   if (!email || !password) {
     return res.status(400).send('Email and password are required');
   }
-  const existingUser = db.users.find((u) => u.email === email);
-  if (existingUser) {
-    return res.status(409).send('User with this email already exists');
-  }
-  const newUser: User = {
-    id: `user_${Date.now()}`,
-    email,
-    name: name || email,
-    // @ts-expect-error - password is not part of the User type, but needed for login
-    password,
-    subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
-    sessionCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  db.users.push(newUser);
-  res.status(201).json(newUser);
+  // Check if user exists
+  const { data: existing, error: findErr } = await supabase.from('users').select('*').eq('email', email).single();
+  if (existing) return res.status(409).send('User with this email already exists');
+  const { data, error } = await supabase.from('users').insert([
+    {
+      email,
+      name: name || email,
+      password, // NOTE: Store hashed in production!
+      subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
+      sessionCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ]).select('*').single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
 });
 
 // Login
-apiRouter.post('/login', (req: Request, res: Response) => {
+apiRouter.post('/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
-  // @ts-expect-error - password is not part of the User type, but needed for login
-  const user = db.users.find((u) => u.email === email && u.password === password);
-  if (user) {
-    res.json(user);
-  } else {
-    res.status(401).send('Invalid email or password');
-  }
+  const { data, error } = await supabase.from('users').select('*').eq('email', email).eq('password', password).single();
+  if (error || !data) return res.status(401).send('Invalid email or password');
+  res.json(data);
 });
 
 // Increment session count
-apiRouter.post('/users/:id/increment-session', (req: Request, res: Response) => {
-  const user = db.users.find((u) => u.id === req.params.id);
-  if (user) {
-    user.sessionCount += 1;
-    res.json(user);
-  } else {
-    res.status(404).send('User not found');
-  }
+apiRouter.post('/users/:id/increment-session', async (req: Request, res: Response) => {
+  const { data: user, error } = await supabase.from('users').select('*').eq('id', req.params.id).single();
+  if (!user) return res.status(404).send('User not found');
+  const sessionCount = (user as any).sessionCount || 0;
+  const { data, error: updateErr } = await supabase.from('users').update({ sessionCount: sessionCount + 1 }).eq('id', req.params.id).select('*').single();
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+  res.json(data);
 });
 
-// --- Session Management Endpoints ---
+// --- Session Management Endpoints (Supabase) ---
 
 // Get all sessions
-apiRouter.get('/sessions', (req: Request, res: Response) => {
-  res.json(db.sessions);
+apiRouter.get('/sessions', async (req: Request, res: Response) => {
+  const { data, error } = await supabase.from('sessions').select('*');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // Get session by ID
-apiRouter.get('/sessions/:id', (req: Request, res: Response) => {
-  const session = db.sessions.find((s) => s.id === req.params.id);
-  if (session) {
-    res.json(session);
-  } else {
-    res.status(404).send('Session not found');
-  }
+apiRouter.get('/sessions/:id', async (req: Request, res: Response) => {
+  const { data, error } = await supabase.from('sessions').select('*').eq('id', req.params.id).single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json(data);
 });
 
 // Create a new session
-apiRouter.post('/sessions', (req: Request, res: Response) => {
+apiRouter.post('/sessions', async (req: Request, res: Response) => {
   const { title, description } = req.body;
   if (!title) {
     return res.status(400).send('Title is required');
   }
-  const newSession: StudySession = {
-    id: `session_${Date.now()}`,
-    title,
-    description: description || '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    files: [],
-    flashcards: [],
-    quizzes: [],
-    studyMaterials: [],
-  };
-  db.sessions.push(newSession);
-  // Also initialize chat messages for this session
-  db.messages[newSession.id] = [];
-  res.status(201).json(newSession);
+  const { data, error } = await supabase.from('sessions').insert([
+    {
+      title,
+      description: description || '',
+      createdat: new Date().toISOString(),
+      updatedat: new Date().toISOString(),
+      files: [],
+      flashcards: [],
+      quizzes: [],
+      studyMaterials: [],
+    },
+  ]).select('*').single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
 });
 
 // Delete a session
-apiRouter.delete('/sessions/:id', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s) => s.id === req.params.id);
-  if (index !== -1) {
-    db.sessions.splice(index, 1);
-    delete db.messages[req.params.id];
-    res.status(204).send();
-  } else {
-    res.status(404).send('Session not found');
-  }
+apiRouter.delete('/sessions/:id', async (req: Request, res: Response) => {
+  const { error } = await supabase.from('sessions').delete().eq('id', req.params.id);
+  if (error) return res.status(404).json({ error: error.message });
+  res.status(204).send();
 });
 
 // Update a session
-apiRouter.put('/sessions/:id', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s) => s.id === req.params.id);
-  if (index !== -1) {
-    db.sessions[index] = { ...db.sessions[index], ...req.body, updatedAt: new Date().toISOString() };
-    res.json(db.sessions[index]);
-  } else {
-    res.status(404).send('Session not found');
-  }
+apiRouter.put('/sessions/:id', async (req: Request, res: Response) => {
+  const { data, error } = await supabase.from('sessions').update({ ...req.body, updatedAt: new Date().toISOString() }).eq('id', req.params.id).select('*').single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json(data);
 });
 
-// Add a file to a session
-apiRouter.post('/sessions/:id/files', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s) => s.id === req.params.id);
-  if (index !== -1) {
-    const newFile = { ...req.body, id: `file_${Date.now()}` };
-    db.sessions[index].files.push(newFile);
-    res.status(201).json(db.sessions[index]);
-  } else {
-    res.status(404).send('Session not found');
-  }
+// --- Custom Logic: Flashcards, Quizzes, Stripe ---
+// (Keep these endpoints as custom logic, using Supabase for storage if needed)
+
+// Add flashcards to a session (custom logic)
+apiRouter.post('/sessions/:id/flashcards', async (req: Request, res: Response) => {
+  // Custom flashcard generation logic here
+  res.status(501).json({ error: 'Not implemented yet (custom logic placeholder)' });
 });
 
-// Remove a file from a session
-apiRouter.delete('/sessions/:id/files/:fileId', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s) => s.id === req.params.id);
-  if (index !== -1) {
-    db.sessions[index].files = db.sessions[index].files.filter((f) => f.id !== req.params.fileId);
-    res.json(db.sessions[index]);
-  } else {
-    res.status(404).send('Session not found');
-  }
+// Add a quiz to a session (custom logic)
+apiRouter.post('/sessions/:id/quizzes', async (req: Request, res: Response) => {
+  // Custom quiz generation logic here
+  res.status(501).json({ error: 'Not implemented yet (custom logic placeholder)' });
 });
 
-// --- Chat Message Endpoints ---
-
-// Get chat messages for a session
-apiRouter.get('/sessions/:id/messages', (req: Request, res: Response) => {
-  const messages = db.messages[req.params.id];
-  if (messages) {
-    res.json(messages);
-  } else {
-    // If a session exists but has no messages, return an empty array
-    const session = db.sessions.find((s) => s.id === req.params.id);
-    if (session) {
-      res.json([]);
-    } else {
-      res.status(404).send('Session not found');
-    }
-  }
-});
-
-// Add a chat message to a session
-apiRouter.post('/sessions/:id/messages', (req: Request, res: Response) => {
-  const { role, content } = req.body;
-  if (!role || !content) {
-    return res.status(400).send('Role and content are required');
-  }
-
-  const session = db.sessions.find((s) => s.id === req.params.id);
-  if (!session) {
-    return res.status(404).send('Session not found');
-  }
-
-  const newMessage: ChatMessage = {
-    id: `msg_${Date.now()}`,
-    role,
-    content,
-    timestamp: new Date().toISOString(),
-  };
-
-  if (!db.messages[req.params.id]) {
-    db.messages[req.params.id] = [];
-  }
-  db.messages[req.params.id].push(newMessage);
-
-  res.status(201).json(newMessage);
-});
-
-// --- Flashcard and Quiz Endpoints ---
-
-// Add flashcards to a session
-apiRouter.post('/sessions/:id/flashcards', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s) => s.id === req.params.id);
-  if (index !== -1) {
-    const { flashcards } = req.body;
-    const newFlashcards = flashcards.map((f: Omit<Flashcard, 'id'>) => ({ ...f, id: `fc_${Date.now()}_${Math.random()}` }));
-    db.sessions[index].flashcards.push(...newFlashcards);
-    res.status(201).json(db.sessions[index]);
-  } else {
-    res.status(404).send('Session not found');
-  }
-});
-
-// Add a quiz to a session
-apiRouter.post('/sessions/:id/quizzes', (req: Request, res: Response) => {
-  const index = db.sessions.findIndex((s) => s.id === req.params.id);
-  if (index !== -1) {
-    const { quiz } = req.body;
-    const newQuiz = { ...quiz, id: `quiz_${Date.now()}` };
-    db.sessions[index].quizzes.push(newQuiz);
-    res.status(201).json(db.sessions[index]);
-  } else {
-    res.status(404).send('Session not found');
-  }
-});
-
-// Toggle flashcard mastery
-apiRouter.put('/sessions/:sessionId/flashcards/:flashcardId/toggle-mastery', (req: Request, res: Response) => {
-  const session = db.sessions.find((s) => s.id === req.params.sessionId);
-  if (session) {
-    const flashcard = session.flashcards.find((f) => f.id === req.params.flashcardId);
-    if (flashcard) {
-      flashcard.mastered = !flashcard.mastered;
-      res.json(flashcard);
-    } else {
-      res.status(404).send('Flashcard not found');
-    }
-  } else {
-    res.status(404).send('Session not found');
+// Stripe payment endpoint (real implementation)
+apiRouter.post('/stripe/checkout', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!stripeSecret || !stripe) return res.status(500).json({ error: 'Stripe not configured' });
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    // Replace with your actual Stripe price ID for $9.99/month
+    const priceId = 'price_1ReOtJBQXLankofpN65ovmWQ';
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      customer_email: email,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: 'https://quizio-ai-study.surge.sh/success',
+      cancel_url: 'https://quizio-ai-study.surge.sh/cancel',
+    });
+    res.json({ sessionId: session.id });
+  } catch (err) {
+    let message = 'Unknown error';
+    if (err instanceof Error) message = err.message;
+    res.status(500).json({ error: 'Stripe checkout error', details: message });
   }
 });
 
 app.use('/api', apiRouter);
 
-// --- API Endpoints ---
-// We will add endpoints for users, sessions, and messages here.
-
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
 });
 
-export default db; 
+export default supabase; 

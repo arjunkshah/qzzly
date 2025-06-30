@@ -25,6 +25,7 @@ export interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   signInWithGoogle: () => Promise<void>;
+  updateSubscription: (plan: 'pro', promoCode?: string) => Promise<boolean>;
 }
 
 export interface LoginFormData {
