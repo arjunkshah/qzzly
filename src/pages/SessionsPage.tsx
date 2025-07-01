@@ -203,11 +203,11 @@ export default function SessionsPage() {
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span>Created: {formatDate(session.createdAt)}</span>
+                      <span>Created: {formatDate(session.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      <span>Updated: {formatDate(session.updatedAt)}</span>
+                      <span>Updated: {formatDate(session.updated_at)}</span>
                     </div>
                   </div>
                 </CardContent>

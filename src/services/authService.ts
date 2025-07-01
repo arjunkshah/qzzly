@@ -63,8 +63,8 @@ export const signupUser = async (data: SignupFormData): Promise<User> => {
         name: data.name,
         subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
         sessionCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
     ])
     .select()
@@ -101,7 +101,7 @@ export const incrementSessionCount = async (userId: string): Promise<User> => {
   // Increment
   const { data: updated, error } = await supabase
     .from('users')
-    .update({ sessionCount: (user.sessionCount || 0) + 1, updatedAt: new Date().toISOString() })
+    .update({ sessionCount: (user.sessionCount || 0) + 1, updated_at: new Date().toISOString() })
     .eq('id', userId)
     .select()
     .single();
@@ -128,4 +128,4 @@ export const getSubscriptionInfo = (): { plan: 'free' | 'pro'; price: string; fe
 // Check if promo code is valid
 export const validatePromoCode = (code: string): boolean => {
   return code.trim().toUpperCase() === 'BETAX';
-}; 
+};  

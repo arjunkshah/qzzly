@@ -169,7 +169,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
         content: materialContent,
         format,
         complexity,
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString()
       };
       
       setStudyMaterialContent(newMaterial);
