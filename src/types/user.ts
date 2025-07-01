@@ -4,8 +4,8 @@ export interface User {
   name: string;
   subscription: Subscription;
   sessionCount: number;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Subscription {
@@ -42,4 +42,4 @@ export interface SignupFormData {
 export interface SubscriptionFormData {
   plan: 'free' | 'pro';
   promoCode?: string;
-} 
+}  

@@ -2,7 +2,7 @@
 // import pdfParse from 'pdf-parse';
 import { Buffer } from 'buffer';
 
-const OPENAI_API_KEY = "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";
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
 // Rate limiting configuration
 const RATE_LIMIT_DELAY = 1000; // 1 second between requests
@@ -936,4 +936,4 @@ export async function ingestSessionFiles(
     console.error("Error ingesting session files:", error);
     return null;
   }
-} 
+}  

@@ -8,7 +8,7 @@ export const getSessions = async (): Promise<StudySession[]> => {
   const { data, error } = await supabase
     .from("sessions")
     .select("*")
-    .order("createdAt", { ascending: false });
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return data || [];
 };
@@ -140,4 +140,4 @@ export const addQuiz = async (sessionId: string, quiz: Omit<Quiz, 'id'>): Promis
     .single();
   if (error) throw error;
   return data;
-}; 
+};  
