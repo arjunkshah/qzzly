@@ -59,7 +59,7 @@ apiRouter.get('/users/:id', async (req: Request, res: Response) => {
   res.json(data);
 });
 
-// Create a new user (signup)
+// Create a new user (signup) - both /users and /auth/signup routes
 apiRouter.post('/users', async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
   if (!email || !password) {
@@ -75,8 +75,31 @@ apiRouter.post('/users', async (req: Request, res: Response) => {
       password, // NOTE: Store hashed in production!
       subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
       sessionCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ]).select('*').single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
+});
+
+apiRouter.post('/auth/signup', async (req: Request, res: Response) => {
+  const { email, password, name } = req.body;
+  if (!email || !password) {
+    return res.status(400).send('Email and password are required');
+  }
+  // Check if user exists
+  const { data: existing, error: findErr } = await supabase.from('users').select('*').eq('email', email).single();
+  if (existing) return res.status(409).send('User with this email already exists');
+  const { data, error } = await supabase.from('users').insert([
+    {
+      email,
+      name: name || email,
+      password, // NOTE: Store hashed in production!
+      subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
+      sessionCount: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
   ]).select('*').single();
   if (error) return res.status(500).json({ error: error.message });
@@ -85,6 +108,13 @@ apiRouter.post('/users', async (req: Request, res: Response) => {
 
 // Login
 apiRouter.post('/login', async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  const { data, error } = await supabase.from('users').select('*').eq('email', email).eq('password', password).single();
+  if (error || !data) return res.status(401).send('Invalid email or password');
+  res.json(data);
+});
+
+apiRouter.post('/auth/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   const { data, error } = await supabase.from('users').select('*').eq('email', email).eq('password', password).single();
   if (error || !data) return res.status(401).send('Invalid email or password');
@@ -127,8 +157,8 @@ apiRouter.post('/sessions', async (req: Request, res: Response) => {
     {
       title,
       description: description || '',
-      createdat: new Date().toISOString(),
-      updatedat: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       files: [],
       flashcards: [],
       quizzes: [],
@@ -148,7 +178,7 @@ apiRouter.delete('/sessions/:id', async (req: Request, res: Response) => {
 
 // Update a session
 apiRouter.put('/sessions/:id', async (req: Request, res: Response) => {
-  const { data, error } = await supabase.from('sessions').update({ ...req.body, updatedAt: new Date().toISOString() }).eq('id', req.params.id).select('*').single();
+  const { data, error } = await supabase.from('sessions').update({ ...req.body, updated_at: new Date().toISOString() }).eq('id', req.params.id).select('*').single();
   if (error) return res.status(404).json({ error: error.message });
   res.json(data);
 });
@@ -203,4 +233,4 @@ app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
 });
 
-export default supabase; 
+export default supabase;  
