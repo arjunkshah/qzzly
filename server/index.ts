@@ -75,8 +75,6 @@ apiRouter.post('/users', async (req: Request, res: Response) => {
       password, // NOTE: Store hashed in production!
       subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
       sessionCount: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     },
   ]).select('*').single();
   if (error) return res.status(500).json({ error: error.message });
@@ -98,8 +96,6 @@ apiRouter.post('/auth/signup', async (req: Request, res: Response) => {
       password, // NOTE: Store hashed in production!
       subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
       sessionCount: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     },
   ]).select('*').single();
   if (error) return res.status(500).json({ error: error.message });
@@ -157,8 +153,8 @@ apiRouter.post('/sessions', async (req: Request, res: Response) => {
     {
       title,
       description: description || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       files: [],
       flashcards: [],
       quizzes: [],
@@ -178,7 +174,7 @@ apiRouter.delete('/sessions/:id', async (req: Request, res: Response) => {
 
 // Update a session
 apiRouter.put('/sessions/:id', async (req: Request, res: Response) => {
-  const { data, error } = await supabase.from('sessions').update({ ...req.body, updated_at: new Date().toISOString() }).eq('id', req.params.id).select('*').single();
+  const { data, error } = await supabase.from('sessions').update({ ...req.body, updatedAt: new Date().toISOString() }).eq('id', req.params.id).select('*').single();
   if (error) return res.status(404).json({ error: error.message });
   res.json(data);
 });
@@ -233,4 +229,4 @@ app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
 });
 
-export default supabase;  
+export default supabase;        

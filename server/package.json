@@ -9,7 +9,9 @@
   "author": "",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.21.2"
+    "dotenv": "^17.0.1",
+    "express": "^4.21.2",
+    "stripe": "^18.3.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
