@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Production backend URL - will be set by environment variable or ngrok URL
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://your-ngrok-url.ngrok.io';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 /**
  * Extract text from PDF using the backend olmOCR FastAPI service
