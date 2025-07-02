@@ -203,19 +203,19 @@ export default function SessionsPage() {
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span>Created: {formatDate(session.created_at)}</span>
+                      <span>Created: {formatDate(session.createdat)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      <span>Updated: {formatDate(session.updated_at)}</span>
+                      <span>Updated: {formatDate(session.updatedat)}</span>
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter className="pt-3 border-t flex justify-between">
                   <div className="flex gap-2 text-sm">
-                    <span className="text-purple-600">{session.files.length} Files</span>
-                    <span className="text-purple-600">{session.flashcards.length} Flashcards</span>
-                    <span className="text-purple-600">{session.quizzes.length} Quizzes</span>
+                    <span className="text-purple-600">{session.files?.length || 0} Files</span>
+                    <span className="text-purple-600">{session.flashcards?.length || 0} Flashcards</span>
+                    <span className="text-purple-600">{session.quizzes?.length || 0} Quizzes</span>
                   </div>
                 </CardFooter>
               </Card>

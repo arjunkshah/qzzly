@@ -59,8 +59,8 @@ export function FlashcardComponent({
 
     try {
       // Wrap the single flashcard in an array for the batch operation
-      const updatedSession = await addFlashcards(sessionId, [{ front, back, mastered: false }]);
-      const addedFlashcard = updatedSession.flashcards[updatedSession.flashcards.length - 1];
+      const addedFlashcards = await addFlashcards(sessionId, [{ front, back, mastered: false }]);
+      const addedFlashcard = addedFlashcards[addedFlashcards.length - 1];
       
       onFlashcardAdded(addedFlashcard);
       
@@ -196,10 +196,7 @@ export function FlashcardComponent({
           mastered: false 
       }));
         
-      const updatedSession = await addFlashcards(sessionId, flashcardsToAdd);
-
-      // Get the newly added flashcards (last N flashcards from the session)
-      const addedFlashcards = updatedSession.flashcards.slice(-generatedCards.length);
+      const addedFlashcards = await addFlashcards(sessionId, flashcardsToAdd);
 
       // Add all flashcards to the UI state at once
       if (onFlashcardsAdded && addedFlashcards.length > 0) {

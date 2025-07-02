@@ -4,8 +4,8 @@ export interface User {
   name: string;
   subscription: Subscription;
   sessionCount: number;
-  created_at: string;
-  updated_at: string;
+  createdat: string;
+  updatedat: string;
 }
 
 export interface Subscription {

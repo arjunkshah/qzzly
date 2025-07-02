@@ -95,7 +95,7 @@ export function QuizComponent({
       // Get session to check file content
       const session = await getSessionById(sessionId);
       
-      if (!session || session.files.length === 0) {
+      if (!session || !session.files || session.files.length === 0) {
         toast({
           title: "No study materials",
           description: "Please upload PDF files first to generate quiz questions from your content",

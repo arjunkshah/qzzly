@@ -41,8 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             startDate: new Date().toISOString(),
           },
           sessionCount: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+                  createdat: new Date().toISOString(),
+        updatedat: new Date().toISOString(),
         };
         setUser(newUser);
         localStorage.setItem('quiz_io_current_user', JSON.stringify(newUser));
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             status: 'active',
             startDate: new Date().toISOString(),
           },
-          updated_at: new Date().toISOString(),
+          updatedat: new Date().toISOString(),
         })
         .eq('id', user.id)
         .select()

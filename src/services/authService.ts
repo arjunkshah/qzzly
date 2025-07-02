@@ -63,8 +63,8 @@ export const signupUser = async (data: SignupFormData): Promise<User> => {
         name: data.name,
         subscription: { plan: 'free', status: 'active', startDate: new Date().toISOString() },
         sessionCount: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        createdat: new Date().toISOString(),
+        updatedat: new Date().toISOString(),
       },
     ])
     .select()
@@ -101,7 +101,7 @@ export const incrementSessionCount = async (userId: string): Promise<User> => {
   // Increment
   const { data: updated, error } = await supabase
     .from('users')
-    .update({ sessionCount: (user.sessionCount || 0) + 1, updated_at: new Date().toISOString() })
+    .update({ sessionCount: (user.sessionCount || 0) + 1, updatedat: new Date().toISOString() })
     .eq('id', userId)
     .select()
     .single();

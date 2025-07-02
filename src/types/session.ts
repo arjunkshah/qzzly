@@ -2,8 +2,8 @@ export interface StudySession {
   id: string;
   title: string;
   description: string;
-  created_at: string;
-  updated_at: string;
+  createdat: string;
+  updatedat: string;
   files: FileItem[];
   flashcards: Flashcard[];
   quizzes: Quiz[];
@@ -57,5 +57,5 @@ export interface StudyMaterial {
   content: string;
   format: 'notes' | 'outline' | 'summary';
   complexity: string;
-  created_at: string;
+  createdat: string;
 }
