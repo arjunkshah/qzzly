@@ -45,6 +45,13 @@ async def extract_pdf_text(file: UploadFile = File(...)):
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     
+    # Check if olmOCR is available
+    try:
+        import olmocr
+        print("olmOCR is available")
+    except ImportError:
+        raise HTTPException(status_code=500, detail="olmOCR is not installed")
+    
     try:
         # Create temporary directories
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -67,16 +74,25 @@ async def extract_pdf_text(file: UploadFile = File(...)):
             
             print(f"Running olmOCR command: {' '.join(cmd)}")
             
+            # Set up environment variables for the subprocess
+            env = os.environ.copy()
+            env['PYTHONUNBUFFERED'] = '1'
+            env['PYTHONIOENCODING'] = 'utf-8'
+            
             result = subprocess.run(
                 cmd,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 cwd=temp_dir,
+                env=env,
                 timeout=300  # 5 minute timeout
             )
             
             if result.returncode != 0:
                 print(f"olmOCR error: {result.stderr}")
+                print(f"olmOCR stdout: {result.stdout}")
+                print(f"olmOCR return code: {result.returncode}")
                 raise HTTPException(
                     status_code=500, 
                     detail=f"PDF processing failed: {result.stderr}"
