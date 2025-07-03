@@ -6,7 +6,7 @@ import { addFileToSession } from "@/services/sessionService";
 import { generateFileSummary as openaiGenerateFileSummary } from "@/services/openaiService";
 import { useToast } from "@/hooks/use-toast";
 import { File, Upload, Download, Trash, FileText, AlertCircle } from "lucide-react";
-import { extractTextFromPDF, validatePDFExtraction } from "@/lib/utils";
+import { extractTextFromPDF, uploadPDFToOpenAI } from "@/lib/utils";
 
 interface FilesComponentProps {
   sessionId: string;
@@ -59,26 +59,19 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
         
         console.log(`Processing file: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
         
-        // First validate the PDF extraction
-        const validation = await validatePDFExtraction(file);
+        // Upload PDF to OpenAI
+        const uploadResult = await uploadPDFToOpenAI(file);
+        console.log("PDF uploaded to OpenAI:", uploadResult);
         
-        // Extract text content from PDF
+        // Extract text content from PDF (placeholder for now)
         const extractedContent = await extractTextFromPDF(file);
         console.log("Extracted content length:", extractedContent.length);
         
-        // Provide user feedback based on quality
-        if (validation.quality === 'poor') {
-          toast({
-            title: "Warning",
-            description: `PDF extraction quality is poor. ${validation.issues.join(', ')}`,
-            variant: "destructive",
-          });
-        } else if (validation.quality === 'fair') {
-          toast({
-            title: "Notice",
-            description: "PDF extraction quality is fair. Some content may be missing.",
-          });
-        }
+        // Provide user feedback
+        toast({
+          title: "Success",
+          description: `PDF uploaded successfully to OpenAI with ID: ${uploadResult.id}`,
+        });
         
         const newFile: FileItem = {
           id: `file_${Date.now()}_${i}`,

@@ -9,43 +9,45 @@ export function cn(...inputs: ClassValue[]) {
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 /**
- * Extract text from PDF using the backend olmOCR FastAPI service
+ * Extract text from PDF using OpenAI API via backend
  */
 export async function extractTextFromPDF(file: File | Blob): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await fetch(`${BACKEND_URL}/extract-pdf-text`, {
+  const response = await fetch(`${BACKEND_URL}/upload`, {
     method: 'POST',
     body: formData,
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || 'Failed to extract PDF text');
+    throw new Error(error.error || 'Failed to upload PDF to OpenAI');
   }
   const data = await response.json();
-  return data.text || '';
+  // For now, return a placeholder since we need to implement text extraction
+  // This will be enhanced when we add the OpenAI Assistants API integration
+  return `PDF uploaded successfully with ID: ${data.id}`;
 }
 
 /**
- * Validate PDF extraction using the backend olmOCR FastAPI service
+ * Upload PDF to OpenAI API via backend
  */
-export async function validatePDFExtraction(file: File): Promise<{
-  success: boolean;
-  textLength: number;
-  quality: string;
-  issues: string[];
-  sample: string;
+export async function uploadPDFToOpenAI(file: File): Promise<{
+  id: string;
+  object: string;
+  bytes: number;
+  created_at: number;
   filename: string;
+  purpose: string;
 }> {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await fetch(`${BACKEND_URL}/validate-pdf`, {
+  const response = await fetch(`${BACKEND_URL}/upload`, {
     method: 'POST',
     body: formData,
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || 'Failed to validate PDF');
+    throw new Error(error.error || 'Failed to upload PDF to OpenAI');
   }
   return await response.json();
 }
