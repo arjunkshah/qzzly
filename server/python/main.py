@@ -64,9 +64,10 @@ async def extract_pdf_text(file: UploadFile = File(...)):
                 content = await file.read()
                 await f.write(content)
             
-            # Run olmOCR pipeline
+            # Run olmOCR pipeline using CPU wrapper
+            wrapper_path = os.path.join(os.path.dirname(__file__), "olmocr_cpu_wrapper.py")
             cmd = [
-                "python", "-m", "olmocr.pipeline",
+                "python", wrapper_path,
                 workspace_dir,
                 "--markdown",
                 "--pdfs", pdf_path
@@ -78,12 +79,15 @@ async def extract_pdf_text(file: UploadFile = File(...)):
             env = os.environ.copy()
             env['PYTHONUNBUFFERED'] = '1'
             env['PYTHONIOENCODING'] = 'utf-8'
+            env['CUDA_VISIBLE_DEVICES'] = ''  # Disable CUDA
+            env['TORCH_DEVICE'] = 'cpu'  # Force CPU usage
+            env['TRANSFORMERS_OFFLINE'] = '1'  # Use offline mode if possible
+            env['HF_HUB_OFFLINE'] = '0'  # Allow HuggingFace model download
             
             result = subprocess.run(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 cwd=temp_dir,
                 env=env,
                 timeout=300  # 5 minute timeout

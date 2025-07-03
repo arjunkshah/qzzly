@@ -93,8 +93,8 @@ export function chunkText(text: string, maxLength: number = 4000): string[] {
         }
         if (wordChunk) {
           currentChunk = wordChunk;
-        }
-      }
+    }
+  }
     }
   }
   
