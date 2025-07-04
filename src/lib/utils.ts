@@ -5,15 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Production backend URL - will be set by environment variable or ngrok URL
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+// Always use relative /api for Vercel deployment
+const BACKEND_URL = '/api';
 
 /**
  * Extract text from PDF using OpenAI API via backend
  */
 export async function extractTextFromPDF(file: File | Blob): Promise<string> {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', file); // file must be a File or Blob
   const response = await fetch(`${BACKEND_URL}/upload`, {
     method: 'POST',
     body: formData,
@@ -40,7 +40,7 @@ export async function uploadPDFToOpenAI(file: File): Promise<{
   purpose: string;
 }> {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', file); // file must be a File or Blob
   const response = await fetch(`${BACKEND_URL}/upload`, {
     method: 'POST',
     body: formData,
@@ -95,8 +95,8 @@ export function chunkText(text: string, maxLength: number = 4000): string[] {
         }
         if (wordChunk) {
           currentChunk = wordChunk;
-    }
-  }
+        }
+      }
     }
   }
   

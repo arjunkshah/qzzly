@@ -6,20 +6,38 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-const upload = multer({ dest: 'uploads/' });
+
+// Configure multer for Vercel serverless environment
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
 
 app.use(cors());
+app.use(express.json());
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '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';
 
-// POST /upload: Accepts a PDF and sends it to OpenAI API
-app.post('/upload', upload.single('file'), async (req, res) => {
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'healthy', service: 'openai-pdf-upload' });
+});
+
+// POST /api/upload: Accepts a PDF and sends it to OpenAI API
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
+  
   try {
+    const FormData = require('form-data');
     const formData = new FormData();
-    formData.append('file', require('fs').createReadStream(req.file.path), req.file.originalname);
+    formData.append('file', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+    });
     formData.append('purpose', 'assistants');
 
     const openaiRes = await axios.post('https://api.openai.com/v1/files', formData, {
@@ -28,16 +46,23 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         ...formData.getHeaders(),
       },
     });
-    // Optionally, you can now use the file id with the Assistants API for further processing
+    
     res.json(openaiRes.data);
   } catch (err) {
-    res.status(500).json({ error: err.response?.data || err.message });
-  } finally {
-    require('fs').unlink(req.file.path, () => {}); // Clean up temp file
+    console.error('OpenAI API error:', err.response?.data || err.message);
+    res.status(500).json({ 
+      error: err.response?.data?.error?.message || err.message 
+    });
   }
 });
 
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
-  console.log(`OpenAI backend running on port ${PORT}`);
-}); 
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 8000;
+  app.listen(PORT, () => {
+    console.log(`OpenAI backend running on port ${PORT}`);
+  });
+}
+
+// For Vercel serverless
+module.exports = app; 
