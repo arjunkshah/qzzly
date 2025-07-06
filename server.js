@@ -6,8 +6,10 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import FormData from 'form-data';
 import Stripe from 'stripe';
+import multer from 'multer';
 
 const app = express();
+const upload = multer();
 
 // Middleware
 app.use(cors());
@@ -40,9 +42,10 @@ if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY || !pr
 }
 
 // API Routes
-app.post('/api/upload', async (req, res) => {
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
-    const { file, sessionId } = req.body;
+    const file = req.file;
+    const sessionId = req.body.sessionId;
 
     if (!file || !sessionId) {
       return res.status(400).json({ error: 'Missing file or sessionId' });
@@ -57,7 +60,7 @@ app.post('/api/upload', async (req, res) => {
     // Create FormData for OpenAI upload
     const formData = new FormData();
     formData.append('purpose', 'assistants');
-    formData.append('file', Buffer.from(file.data, 'base64'), file.name);
+    formData.append('file', file.buffer, file.originalname);
 
     const openaiResponse = await fetch('https://api.openai.com/v1/files', {
       method: 'POST',
@@ -76,14 +79,14 @@ app.post('/api/upload', async (req, res) => {
     console.log('PDF uploaded to OpenAI:', openaiResult);
 
     // Extract content from the file (simplified)
-    const extractedContent = `Content extracted from ${file.name}. File ID: ${openaiResult.id}`;
+    const extractedContent = `Content extracted from ${file.originalname}. File ID: ${openaiResult.id}`;
 
     // Save file info to Supabase
     const { data: savedFile, error: dbError } = await supabase
       .from('files')
       .insert([{
-        name: file.name,
-        type: file.type,
+        name: file.originalname,
+        type: file.mimetype,
         content: extractedContent,
         session_id: sessionId,
         uploadedAt: new Date().toISOString()
