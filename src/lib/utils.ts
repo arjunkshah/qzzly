@@ -31,7 +31,7 @@ export async function extractTextFromPDF(file: File | Blob): Promise<string> {
 /**
  * Upload PDF to OpenAI API via backend
  */
-export async function uploadPDFToOpenAI(file: File): Promise<{
+export async function uploadPDFToOpenAI(file: File, sessionId: string): Promise<{
   id: string;
   object: string;
   bytes: number;
@@ -41,6 +41,7 @@ export async function uploadPDFToOpenAI(file: File): Promise<{
 }> {
   const formData = new FormData();
   formData.append('file', file); // file must be a File or Blob
+  formData.append('sessionId', sessionId); // send sessionId as form field
   const response = await fetch(`${BACKEND_URL}/upload`, {
     method: 'POST',
     body: formData,

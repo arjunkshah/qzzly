@@ -70,7 +70,7 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
         console.log(`Processing file: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
         
         // Upload PDF to OpenAI
-        const uploadResult = await uploadPDFToOpenAI(file);
+        const uploadResult = await uploadPDFToOpenAI(file, sessionId);
         console.log("PDF uploaded to OpenAI:", uploadResult);
         
         // Extract text content from PDF (placeholder for now)
