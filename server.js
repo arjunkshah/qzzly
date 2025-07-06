@@ -23,6 +23,22 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Log all required environment variables at startup
+console.log('--- ENVIRONMENT VARIABLES ---');
+console.log('VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL);
+console.log('VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY);
+console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY);
+console.log('STRIPE_SECRET_KEY:', process.env.STRIPE_SECRET_KEY);
+console.log('STRIPE_PRICE_ID:', process.env.STRIPE_PRICE_ID);
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('-----------------------------');
+
+// Exit if any required env vars are missing
+if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY || !process.env.OPENAI_API_KEY || !process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_ID || !process.env.FRONTEND_URL) {
+  console.error('ERROR: One or more required environment variables are missing. Exiting.');
+  process.exit(1);
+}
+
 // API Routes
 app.post('/api/upload', async (req, res) => {
   try {
