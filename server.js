@@ -8,6 +8,10 @@ import FormData from 'form-data';
 import Stripe from 'stripe';
 import multer from 'multer';
 
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const app = express();
 const upload = multer();
 
@@ -15,10 +19,6 @@ const upload = multer();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
-
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Initialize Supabase
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
