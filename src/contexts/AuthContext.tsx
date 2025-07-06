@@ -41,8 +41,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             startDate: new Date().toISOString(),
           },
           sessionCount: 0,
-                  createdat: new Date().toISOString(),
-        updatedat: new Date().toISOString(),
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString(),
+          usage: {
+            monthlySessions: 0,
+            monthlyFiles: 0,
+            currentMonth: new Date().toISOString().slice(0, 7), // YYYY-MM
+            lastResetDate: new Date().toISOString(),
+          },
         };
         setUser(newUser);
         localStorage.setItem('quiz_io_current_user', JSON.stringify(newUser));
@@ -150,6 +156,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Usage tracking functions
+  const checkUsageLimit = (action: 'session' | 'file' | 'chat'): boolean => {
+    if (!user) return false;
+    
+    // Pro users have unlimited access
+    if (user.subscription.plan === 'pro') return true;
+    
+    // Check if we need to reset monthly usage
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    if (user.usage.currentMonth !== currentMonth) {
+      // Reset usage for new month
+      const updatedUser = {
+        ...user,
+        usage: {
+          ...user.usage,
+          monthlySessions: 0,
+          monthlyFiles: 0,
+          currentMonth,
+          lastResetDate: new Date().toISOString(),
+        }
+      };
+      setUser(updatedUser);
+      localStorage.setItem('quiz_io_current_user', JSON.stringify(updatedUser));
+    }
+    
+    // Check limits for free users
+    switch (action) {
+      case 'session':
+        return user.usage.monthlySessions < 1; // 1 session per month
+      case 'file':
+        return user.usage.monthlyFiles < 1; // 1 file per session
+      case 'chat':
+        return false; // Chat not available for free users
+      default:
+        return false;
+    }
+  };
+
+  const incrementUsage = async (action: 'session' | 'file'): Promise<void> => {
+    if (!user) return;
+    
+    const updatedUser = {
+      ...user,
+      usage: {
+        ...user.usage,
+        monthlySessions: action === 'session' ? user.usage.monthlySessions + 1 : user.usage.monthlySessions,
+        monthlyFiles: action === 'file' ? user.usage.monthlyFiles + 1 : user.usage.monthlyFiles,
+      }
+    };
+    
+    setUser(updatedUser);
+    localStorage.setItem('quiz_io_current_user', JSON.stringify(updatedUser));
+    
+    // Update in Supabase
+    try {
+      await supabase
+        .from('users')
+        .update({
+          usage: updatedUser.usage,
+          updatedat: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+    } catch (error) {
+      console.error('Failed to update usage in database:', error);
+    }
+  };
+
   const value: AuthContextType = {
       user, 
       isAuthenticated: !!user, 
@@ -158,7 +231,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout, 
       isLoading,
       signInWithGoogle,
-      updateSubscription
+      updateSubscription,
+      checkUsageLimit,
+      incrementUsage
   };
 
   return (

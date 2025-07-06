@@ -40,7 +40,7 @@ app.use(express.json());
 
 // --- Health Check ---
 app.get('/', (req: Request, res: Response) => {
-  res.send('Quiz.io server is running!');
+  res.send('Qzzly server is running!');
 });
 
 // --- User Authentication Endpoints (Supabase) ---

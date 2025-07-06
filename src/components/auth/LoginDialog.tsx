@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -55,7 +54,7 @@ export function LoginDialog({ children }: LoginDialogProps) {
     if (success) {
       toast({
         title: "Login successful!",
-        description: "Welcome back to Quiz.io",
+        description: "Welcome back to Qzzly",
       });
       setIsOpen(false);
       navigate("/sessions");
@@ -75,7 +74,7 @@ export function LoginDialog({ children }: LoginDialogProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Log in to Quiz.io</DialogTitle>
+          <DialogTitle className="text-xl font-bold">Log in to Qzzly</DialogTitle>
           <DialogDescription>
             Enter your email and password to access your account.
           </DialogDescription>

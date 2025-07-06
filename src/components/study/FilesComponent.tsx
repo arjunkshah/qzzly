@@ -7,6 +7,8 @@ import { generateFileSummary as openaiGenerateFileSummary } from "@/services/ope
 import { useToast } from "@/hooks/use-toast";
 import { File, Upload, Download, Trash, FileText, AlertCircle } from "lucide-react";
 import { extractTextFromPDF, uploadPDFToOpenAI } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { PaywallModal } from "@/components/PaywallModal";
 
 interface FilesComponentProps {
   sessionId: string;
@@ -15,9 +17,11 @@ interface FilesComponentProps {
 }
 
 export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponentProps) {
+  const { user, checkUsageLimit, incrementUsage } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingSummaries, setGeneratingSummaries] = useState<string[]>([]);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -41,6 +45,12 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
 
   const handleFileUpload = async (fileList: FileList) => {
     if (fileList.length === 0) return;
+    
+    // Enforce file upload limit for free users
+    if (!checkUsageLimit('file')) {
+      setPaywallOpen(true);
+      return;
+    }
     
     setUploading(true);
     try {
@@ -73,8 +83,7 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
           description: `PDF uploaded successfully to OpenAI with ID: ${uploadResult.id}`,
         });
         
-        const newFile: FileItem = {
-          id: `file_${Date.now()}_${i}`,
+        const newFile: Omit<FileItem, 'id'> = {
           name: file.name,
           url: URL.createObjectURL(file),
           type: file.type,
@@ -82,11 +91,11 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
           content: extractedContent
         };
         
-        await addFileToSession(sessionId, newFile);
-        onFileAdded(newFile);
+        const savedFile = await addFileToSession(sessionId, newFile);
+        onFileAdded(savedFile);
         
         // Generate summary
-        setGeneratingSummaries(prev => [...prev, newFile.id]);
+        setGeneratingSummaries(prev => [...prev, savedFile.id]);
         
         try {
           console.log(`Generating summary for ${file.name} with ${extractedContent.length} characters`);
@@ -94,7 +103,7 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
           console.log("Generated summary:", summary);
           
           // Update the file with the summary
-          const updatedFile = { ...newFile, summary };
+          const updatedFile = { ...savedFile, summary };
           onFileAdded(updatedFile);
           
           toast({
@@ -108,7 +117,12 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
             description: `${file.name} uploaded but summary generation failed.`
           });
         } finally {
-          setGeneratingSummaries(prev => prev.filter(id => id !== newFile.id));
+          setGeneratingSummaries(prev => prev.filter(id => id !== savedFile.id));
+        }
+        
+        // Increment usage for free users after successful upload
+        if (user?.subscription.plan === 'free') {
+          await incrementUsage('file');
         }
       }
     } catch (error) {
@@ -269,6 +283,13 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
           </div>
         )}
       </div>
+      <PaywallModal
+        isOpen={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        action="file"
+        currentUsage={user?.usage?.monthlyFiles || 0}
+        limit={1}
+      />
     </div>
   );
 }

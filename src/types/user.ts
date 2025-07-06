@@ -6,6 +6,7 @@ export interface User {
   sessionCount: number;
   createdat: string;
   updatedat: string;
+  usage: UsageLimits;
 }
 
 export interface Subscription {
@@ -17,6 +18,13 @@ export interface Subscription {
   stripeSubscriptionId?: string;
 }
 
+export interface UsageLimits {
+  monthlySessions: number;
+  monthlyFiles: number;
+  currentMonth: string; // YYYY-MM format
+  lastResetDate: string;
+}
+
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -26,6 +34,8 @@ export interface AuthContextType {
   isLoading: boolean;
   signInWithGoogle: () => Promise<void>;
   updateSubscription: (plan: 'pro', promoCode?: string) => Promise<boolean>;
+  checkUsageLimit: (action: 'session' | 'file' | 'chat') => boolean;
+  incrementUsage: (action: 'session' | 'file') => Promise<void>;
 }
 
 export interface LoginFormData {

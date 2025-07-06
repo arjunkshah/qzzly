@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,7 +62,7 @@ export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDia
     if (success) {
       toast({
         title: "Account created!",
-        description: "Welcome to Quiz.io",
+        description: "Welcome to Qzzly",
       });
       setIsOpen(false);
       navigate(redirectPath);
@@ -85,7 +84,7 @@ export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDia
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Create your account</DialogTitle>
           <DialogDescription>
-            Join Quiz.io to start creating and studying with flashcards.
+            Join Qzzly to start creating and studying with flashcards.
           </DialogDescription>
         </DialogHeader>
         

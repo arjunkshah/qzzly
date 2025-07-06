@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/NavBar";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,11 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { StudySession } from "@/types/session";
 import { getSessions, createSession, deleteSession } from "@/services/sessionService";
 import { useToast } from "@/hooks/use-toast";
+import { PaywallModal } from "@/components/PaywallModal";
 import { Calendar, Clock, Trash } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function SessionsPage() {
+  const { user, checkUsageLimit, incrementUsage } = useAuth();
   const queryClient = useQueryClient();
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["sessions"],
@@ -23,12 +26,19 @@ export default function SessionsPage() {
   const [newSessionTitle, setNewSessionTitle] = useState("");
   const [newSessionDescription, setNewSessionDescription] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallAction, setPaywallAction] = useState<'session' | 'file' | 'chat'>('session');
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const createSessionMutation = useMutation({
     mutationFn: (data: Partial<StudySession>) => createSession(data),
-    onSuccess: (newSession) => {
+    onSuccess: async (newSession) => {
+      // Increment usage for free users
+      if (user?.subscription.plan === 'free') {
+        await incrementUsage('session');
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) => [
         ...old,
@@ -61,6 +71,13 @@ export default function SessionsPage() {
         description: "Session title is required",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Check usage limits for free users
+    if (!checkUsageLimit('session')) {
+      setPaywallAction('session');
+      setPaywallOpen(true);
       return;
     }
 
@@ -242,6 +259,14 @@ export default function SessionsPage() {
           </div>
         )}
       </main>
+      
+      <PaywallModal
+        isOpen={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        action={paywallAction}
+        currentUsage={user?.usage?.monthlySessions || 0}
+        limit={1}
+      />
     </div>
   );
 }

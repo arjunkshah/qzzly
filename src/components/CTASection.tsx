@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -23,7 +22,7 @@ const CTASection = () => {
               Ready to Transform Your Study Habits?
             </h2>
             <p className="text-xl text-purple-100 mb-10 leading-relaxed">
-              Join thousands of students who are studying smarter, not harder. Try Quiz.io today and see the difference.
+              Join thousands of students who are studying smarter, not harder. Try Qzzly today and see the difference.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-5">
               {isAuthenticated ? (

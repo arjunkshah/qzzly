@@ -1,4 +1,3 @@
-
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 const HowItWorksSection = () => {
@@ -8,7 +7,7 @@ const HowItWorksSection = () => {
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-20">
           <span className="text-purple-600 font-semibold text-sm uppercase tracking-wider mb-2 block">Process</span>
-          <h2 className="text-3xl md:text-4xl font-bold mb-6 tracking-tight">How Quiz.io Works</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-6 tracking-tight">How Qzzly Works</h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
             Three simple steps to transform your study materials into effective learning tools.
           </p>

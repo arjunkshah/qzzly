@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { LoginDialog } from "@/components/auth/LoginDialog";
@@ -23,7 +22,7 @@ export const NavBar = () => {
                   <path d="M2 17L12 22L22 17V7L12 12L2 7V17Z" fill="currentColor" fillOpacity="0.8" />
                 </svg>
               </div>
-              <span className="font-extrabold tracking-tighter">Quiz.io</span>
+              <span className="font-extrabold tracking-tighter">Qzzly</span>
             </Link>
           </div>
           <nav className="hidden md:flex items-center space-x-10">

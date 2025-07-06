@@ -1,4 +1,3 @@
-
 import { Star } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
@@ -11,7 +10,7 @@ const TestimonialsSection = () => {
           <span className="text-purple-600 font-semibold text-sm uppercase tracking-wider mb-2 block">Testimonials</span>
           <h2 className="text-3xl md:text-4xl font-bold mb-6 tracking-tight">What Our Users Say</h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            Join thousands of students who have transformed their study habits with Quiz.io.
+            Join thousands of students who have transformed their study habits with Qzzly.
           </p>
         </div>
         
@@ -27,7 +26,7 @@ const TestimonialsSection = () => {
               </div>
             </div>
             <p className="text-gray-600 leading-relaxed mb-6">
-              "Quiz.io helped me prepare for my anatomy exams in half the time. The AI-generated questions were spot-on and covered exactly what I needed to know."
+              "Qzzly helped me prepare for my anatomy exams in half the time. The AI-generated questions were spot-on and covered exactly what I needed to know."
             </p>
             <div className="mt-4 flex text-yellow-400">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -67,7 +66,7 @@ const TestimonialsSection = () => {
               </div>
             </div>
             <p className="text-gray-600 leading-relaxed mb-6">
-              "The mock tests generated from my programming textbooks were challenging and comprehensive. I aced my final exams thanks to Quiz.io!"
+              "The mock tests generated from my programming textbooks were challenging and comprehensive. I aced my final exams thanks to Qzzly!"
             </p>
             <div className="mt-4 flex text-yellow-400">
               {[1, 2, 3, 4, 5].map((star) => (

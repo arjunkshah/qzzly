@@ -1,4 +1,3 @@
-
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 const Footer = () => {
@@ -15,7 +14,7 @@ const Footer = () => {
                   <path d="M2 17L12 22L22 17V7L12 12L2 7V17Z" fill="white" fillOpacity="0.8" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">Quiz.io</h2>
+              <h2 className="text-2xl font-bold tracking-tight">Qzzly</h2>
             </div>
             <p className="text-gray-400 mb-6 leading-relaxed">
               AI-powered study tools to help you learn faster and remember more.
@@ -71,7 +70,7 @@ const Footer = () => {
         </div>
         
         <div className="border-t border-gray-800 mt-16 pt-8 text-center text-gray-400">
-          <p>&copy; {new Date().getFullYear()} Quiz.io. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Qzzly. All rights reserved.</p>
         </div>
       </div>
     </footer>

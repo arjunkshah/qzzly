@@ -7,6 +7,8 @@ import { ChatMessage, FileItem } from "@/types/session";
 import { getChatMessages, addChatMessage, addFileToSession } from "@/services/sessionService";
 import { generateLongAnswer } from "@/services/openaiService";
 import { MessageSquare, Send, Upload, Plus } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { PaywallModal } from "@/components/PaywallModal";
 
 interface ChatComponentProps {
   sessionId: string;
@@ -22,6 +24,8 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user, checkUsageLimit } = useAuth();
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -53,6 +57,12 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
+
+    // Enforce paywall for chat mode for free users
+    if (!checkUsageLimit('chat')) {
+      setPaywallOpen(true);
+      return;
+    }
 
     const userMessageContent = inputMessage;
     setInputMessage("");
@@ -106,6 +116,12 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Enforce paywall for chat mode for free users
+    if (!checkUsageLimit('chat')) {
+      setPaywallOpen(true);
+      return;
+    }
+
     if (!e.target.files || e.target.files.length === 0) return;
     
     const selectedFiles = Array.from(e.target.files);
@@ -131,8 +147,7 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
         );
         
         // Create file object with content
-        const newFile: FileItem = {
-          id: `file_${Date.now()}_${file.name}`,
+        const newFile: Omit<FileItem, 'id'> = {
           name: file.name,
           url: URL.createObjectURL(file),
           type: file.type,
@@ -140,8 +155,8 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
           content: base64Content // Add the file content
         };
         
-        await addFileToSession(sessionId, newFile);
-        onFileUploaded(newFile);
+        const savedFile = await addFileToSession(sessionId, newFile);
+        onFileUploaded(savedFile);
         uploadedFileNames.push(file.name);
       }
       
@@ -326,6 +341,13 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
       <div className="text-sm text-gray-500 text-center">
         <p>The AI can help you understand concepts, generate study materials, and answer questions about your uploaded PDFs.</p>
       </div>
+      <PaywallModal
+        isOpen={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        action="chat"
+        currentUsage={0}
+        limit={0}
+      />
     </div>
   );
 }

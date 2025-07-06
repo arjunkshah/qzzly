@@ -5,8 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Always use relative /api for Vercel deployment
-const BACKEND_URL = '/api';
+// Always use relative /.netlify/functions for Netlify deployment
+const BACKEND_URL = '/.netlify/functions';
 
 /**
  * Extract text from PDF using OpenAI API via backend
