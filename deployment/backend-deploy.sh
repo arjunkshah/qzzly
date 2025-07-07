@@ -3,11 +3,11 @@
 
 set -e
 
-PROJECT_ID="your-gcp-project-id" # <-- Replace with your GCP project ID
+PROJECT_ID="qzzly-prod" # <-- Set to your GCP project ID
 SERVICE="qzzly-backend"
 REGION="us-central1"
 
-cd ../backend
+cd ./backend
 
 gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE:latest
 

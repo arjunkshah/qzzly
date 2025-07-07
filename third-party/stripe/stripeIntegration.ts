@@ -1,7 +1,7 @@
 // Example integration for Stripe API endpoints
 // This file should be expanded as you add real payment logic
 import express from 'express';
-import { stripe } from '../third-party/stripe/stripeClient';
+import { stripe } from './stripeClient';
 
 const router = express.Router();
 
