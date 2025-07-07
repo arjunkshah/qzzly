@@ -3,7 +3,7 @@
 
 set -e
 
-PROJECT_ID="your-gcp-project-id" # <-- Replace with your GCP project ID
+PROJECT_ID="qzzly-prod"
 BUCKET="qzzly.com"
 
 cd ../frontend
