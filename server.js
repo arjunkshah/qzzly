@@ -1,16 +1,10 @@
-import express from 'express';
-import path from 'path';
-import cors from 'cors';
-import { createClient } from '@supabase/supabase-js';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import FormData from 'form-data';
-import Stripe from 'stripe';
-import multer from 'multer';
-
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
+const FormData = require('form-data');
+const Stripe = require('stripe');
+const multer = require('multer');
 
 const app = express();
 const upload = multer();
@@ -138,9 +132,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 app.post('/api/stripe/checkout', async (req, res) => {
   try {
     const { email } = req.body;
-    
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
@@ -152,7 +144,6 @@ app.post('/api/stripe/checkout', async (req, res) => {
       cancel_url: `${process.env.FRONTEND_URL}/cancel`,
       customer_email: email,
     });
-
     res.json({ sessionId: session.id });
   } catch (error) {
     console.error('Stripe error:', error);
