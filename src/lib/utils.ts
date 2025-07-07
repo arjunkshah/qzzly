@@ -14,7 +14,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://qzzly-backend-h
 export async function extractTextFromPDF(file: File | Blob): Promise<string> {
   const formData = new FormData();
   formData.append('file', file); // file must be a File or Blob
-  const response = await fetch(`${BACKEND_URL}/upload`, {
+  const response = await fetch(`${BACKEND_URL}/api/upload`, {
     method: 'POST',
     body: formData,
   });
@@ -42,7 +42,7 @@ export async function uploadPDFToOpenAI(file: File, sessionId: string): Promise<
   const formData = new FormData();
   formData.append('file', file); // file must be a File or Blob
   formData.append('sessionId', sessionId); // send sessionId as form field
-  const response = await fetch(`${BACKEND_URL}/upload`, {
+  const response = await fetch(`${BACKEND_URL}/api/upload`, {
     method: 'POST',
     body: formData,
   });
