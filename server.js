@@ -16,10 +16,24 @@ const app = express();
 const upload = multer();
 
 // Middleware
-app.use(cors({
-  origin: 'https://qzzly.com',
-  credentials: true,
-}));
+const allowedOrigins = [
+  'https://qzzly.com',
+  'https://www.qzzly.com',
+  'https://qzzly-backend-352230776346.us-central1.run.app',
+];
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  }
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
