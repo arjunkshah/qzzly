@@ -1,4 +1,5 @@
 fastapi
 uvicorn[standard]
 PyPDF2
-openai 
+openai
+python-multipart 
