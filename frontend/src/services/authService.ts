@@ -1,9 +1,14 @@
-// Simple local-storage based auth stubs. Replace with real Supabase/Stripe logic later.
+// Simple localStorage-based auth for demo purposes
+// No external dependencies
 
-export interface LoginFormData { email: string; password: string }
-export interface SignupFormData extends LoginFormData { name: string }
+export interface LoginFormData { 
+  email: string; 
+  password: string 
+}
 
-const STORAGE_KEY = 'quiz_io_current_user';
+export interface SignupFormData extends LoginFormData { 
+  name: string 
+}
 
 type User = {
   id: string;
@@ -12,20 +17,32 @@ type User = {
 };
 
 export function getCurrentUser(): User | null {
-  const json = localStorage.getItem(STORAGE_KEY);
-  return json ? (JSON.parse(json) as User) : null;
+  const userData = localStorage.getItem('quiz_io_current_user');
+  return userData ? JSON.parse(userData) : null;
 }
 
 export async function loginUser(data: LoginFormData): Promise<boolean> {
-  const user: User = { id: '1', email: data.email, name: data.email };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  // Mock login - always succeeds for demo
+  const user = {
+    id: `user_${Date.now()}`,
+    email: data.email,
+    name: data.email.split('@')[0]
+  };
+  localStorage.setItem('quiz_io_current_user', JSON.stringify(user));
   return true;
 }
 
 export async function signupUser(data: SignupFormData): Promise<boolean> {
-  return loginUser(data);
+  // Mock signup - always succeeds for demo
+  const user = {
+    id: `user_${Date.now()}`,
+    email: data.email,
+    name: data.name
+  };
+  localStorage.setItem('quiz_io_current_user', JSON.stringify(user));
+  return true;
 }
 
 export function logoutUser(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem('quiz_io_current_user');
 } 

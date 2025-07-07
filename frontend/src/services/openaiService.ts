@@ -1,21 +1,6 @@
-// OpenAI API Service
-// import pdfParse from 'pdf-parse';
-import { Buffer } from 'buffer';
+// Mock AI Service - No API calls
+// This service provides sample data for demonstration purposes
 
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-
-// Rate limiting configuration
-const RATE_LIMIT_DELAY = 1000; // 1 second between requests
-let lastRequestTime = 0;
-
-// Token limits for different models
-const MODEL_LIMITS = {
-  'gpt-4': { maxTokens: 8192, inputLimit: 6000 },
-  'gpt-4-turbo': { maxTokens: 128000, inputLimit: 100000 },
-  'gpt-3.5-turbo': { maxTokens: 4096, inputLimit: 3000 }
-};
-
-// Define a more specific type for file items
 interface FileItem {
   id: string;
   name: string;
@@ -23,10 +8,9 @@ interface FileItem {
   content?: string;
 }
 
-// Store API contexts for each session
 interface SessionContext {
   files: FileItem[];
-  filePages?: Record<string, string[]>; // Store PDF pages by file ID
+  filePages?: Record<string, string[]>;
   history: {
     role: 'user' | 'assistant' | 'system';
     content: string;
@@ -46,150 +30,6 @@ export interface OpenAIOptions {
 }
 
 /**
- * Rate limiting helper
- */
-async function enforceRateLimit(): Promise<void> {
-  const now = Date.now();
-  const timeSinceLastRequest = now - lastRequestTime;
-  
-  if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
-    const waitTime = RATE_LIMIT_DELAY - timeSinceLastRequest;
-    console.log(`Rate limiting: waiting ${waitTime}ms`);
-    await new Promise(resolve => setTimeout(resolve, waitTime));
-  }
-  
-  lastRequestTime = Date.now();
-}
-
-/**
- * Estimate token count (rough approximation)
- */
-function estimateTokenCount(text: string): number {
-  // Rough estimate: 1 token ≈ 4 characters for English text
-  return Math.ceil(text.length / 4);
-}
-
-/**
- * Chunk large text content to fit within token limits
- */
-function chunkText(text: string, maxTokens: number): string[] {
-  const maxChars = maxTokens * 4; // Rough conversion
-  const chunks: string[] = [];
-  
-  if (text.length <= maxChars) {
-    return [text];
-  }
-  
-  // Split by paragraphs first, then by sentences if needed
-  const paragraphs = text.split('\n\n');
-  let currentChunk = '';
-  
-  for (const paragraph of paragraphs) {
-    if ((currentChunk + paragraph).length <= maxChars) {
-      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
-    } else {
-      if (currentChunk) {
-        chunks.push(currentChunk);
-        currentChunk = '';
-      }
-      
-      // If single paragraph is too long, split by sentences
-      if (paragraph.length > maxChars) {
-        const sentences = paragraph.split('. ');
-        for (const sentence of sentences) {
-          if ((currentChunk + sentence).length <= maxChars) {
-            currentChunk += (currentChunk ? '. ' : '') + sentence;
-          } else {
-            if (currentChunk) {
-              chunks.push(currentChunk);
-              currentChunk = sentence;
-            } else {
-              // If single sentence is still too long, truncate
-              chunks.push(sentence.substring(0, maxChars));
-            }
-          }
-        }
-      } else {
-        currentChunk = paragraph;
-      }
-    }
-  }
-  
-  if (currentChunk) {
-    chunks.push(currentChunk);
-  }
-  
-  return chunks;
-}
-
-/**
- * Extract text from PDF buffer using pdf-parse
- */
-// async function extractTextFromPDF(content: Buffer): Promise<string> {
-//   try {
-//     console.log('Starting PDF text extraction with pdf-parse...');
-//     console.log(`Buffer size: ${content.length} bytes`);
-//     
-//     const data = await pdfParse(content);
-//     const text = data.text;
-//     
-//     if (!text || text.trim().length === 0) {
-//       throw new Error('No readable text content found in PDF. The document may be image-based, password-protected, or corrupted.');
-//     }
-//     
-//     console.log(`Successfully extracted ${text.length} characters from PDF`);
-//     return text.trim();
-//   } catch (error) {
-//     console.error("PDF text extraction failed:", error);
-//     throw new Error(`PDF processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-//   }
-// }
-
-/**
- * Extract individual pages from PDF using pdf-parse (simplified)
- */
-// async function extractPDFPages(content: Buffer): Promise<string[]> {
-//   try {
-//     console.log('Starting PDF page extraction with pdf-parse...');
-//     
-//     const text = await extractTextFromPDF(content);
-//     
-//     // Since pdf-parse doesn't provide page-by-page extraction,
-//     // we'll split the text into logical chunks
-//     const chunks = text.split('\n\n').filter(chunk => chunk.trim().length > 0);
-//     
-//     // Group chunks into "pages" of roughly equal size
-//     const pages: string[] = [];
-//     const targetCharsPerPage = Math.max(500, Math.floor(text.length / 10)); // Aim for ~10 pages max
-//     
-//     let currentPage = '';
-//     for (const chunk of chunks) {
-//       if ((currentPage + chunk).length <= targetCharsPerPage) {
-//         currentPage += (currentPage ? '\n\n' : '') + chunk;
-//       } else {
-//         if (currentPage) {
-//           pages.push(currentPage);
-//         }
-//         currentPage = chunk;
-//       }
-//     }
-//     
-//     if (currentPage) {
-//       pages.push(currentPage);
-//     }
-//     
-//     // Limit to 10 "pages"
-//     const limitedPages = pages.slice(0, 10);
-//     console.log(`Created ${limitedPages.length} logical pages from PDF text`);
-//     
-//     return limitedPages;
-//   } catch (error) {
-//     console.error("PDF page extraction failed:", error);
-//     throw error;
-//   }
-// }
-
-/**
  * Initialize or get a session context
  */
 export function getSessionContext(sessionId: string): SessionContext {
@@ -204,208 +44,78 @@ export function getSessionContext(sessionId: string): SessionContext {
 }
 
 /**
- * Add a file to the session context
+ * Add file to session context
  */
 export function addFileToSessionContext(sessionId: string, file: FileItem): void {
   const context = getSessionContext(sessionId);
-  
-  // Check if file already exists
-  const existingIndex = context.files.findIndex(f => f.id === file.id);
-  if (existingIndex >= 0) {
-    // Update existing file
-    context.files[existingIndex] = file;
-  } else {
-    // Add new file
     context.files.push(file);
-  }
-  
-  // Add a history entry about the file
-  const hasContent = file.content ? ' (with content)' : '';
-  context.history.push({
-    role: 'system',
-    content: `File uploaded: "${file.name}" (${file.type})${hasContent}. Content is available for reference.`
-  });
-  
   context.lastUpdated = Date.now();
-  
-  console.log(`Added file ${file.name} to session ${sessionId} context. Total files: ${context.files.length}`);
 }
 
 /**
- * Get file content from session context with chunking
- */
-function getFileContent(sessionId: string, maxTokens: number = 2000): string {
-  const context = getSessionContext(sessionId);
-  if (context.files.length === 0) {
-    return "";
-  }
-  
-  const allContent = context.files
-    .map(file => {
-      if (file.content) {
-        return `\n\n--- Content from ${file.name} ---\n${file.content}\n--- End of ${file.name} ---`;
-      }
-      return `\n\n--- File: ${file.name} (${file.type}) - Content not available ---`;
-    })
-    .join('\n');
-  
-  // If content is too long, chunk it and return first chunk with summary
-  const estimatedTokens = estimateTokenCount(allContent);
-  if (estimatedTokens > maxTokens) {
-    const chunks = chunkText(allContent, maxTokens);
-    const summary = `\n\n[Note: File content is large (${estimatedTokens} tokens). Showing first section. Total ${context.files.length} files available.]`;
-    return chunks[0] + summary;
-  }
-  
-  return allContent;
-}
-
-/**
- * Generates content using the OpenAI API with rate limiting and error handling
+ * Mock function that simulates AI generation
  */
 export async function generateWithOpenAI(
   prompt: string,
   options: OpenAIOptions = {}
 ): Promise<string> {
-  console.log("Prompt to OpenAI:", prompt.substring(0, 200) + "...");
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
   
-  try {
-    // Enforce rate limiting
-    await enforceRateLimit();
-    
-    // Use GPT-4 by default, fallback to GPT-3.5-turbo if needed
-    const model = options.model || 'gpt-4';
-    const modelConfig = MODEL_LIMITS[model] || MODEL_LIMITS['gpt-4'];
-    
-    // Get session context if provided
-    let sessionContext: SessionContext | undefined;
-    let fileContent = "";
-    
-    if (options.sessionId) {
-      sessionContext = getSessionContext(options.sessionId);
-      fileContent = getFileContent(options.sessionId, modelConfig.inputLimit / 2); // Reserve half tokens for file content
-    }
-    
-    // Build messages array
-    const messages: { role: 'user' | 'assistant' | 'system'; content: string }[] = [];
-    
-    // Add system message with file content if available
-    if (fileContent) {
-      messages.push({
-        role: 'system',
-        content: `You are a helpful study assistant. You have access to the following uploaded files and their content:${fileContent}\n\nUse this content to provide accurate, relevant responses based on the actual material provided.`
-      });
-    } else {
-      messages.push({
-        role: 'system',
-        content: 'You are a helpful study assistant. Provide clear, educational responses to help users learn.'
-      });
-    }
-    
-    // Add conversation history if using session context (limited to avoid token overflow)
-    if (sessionContext && sessionContext.history.length > 0) {
-      // Add recent history (last 5 exchanges to avoid token limits)
-      const recentHistory = sessionContext.history.slice(-5);
-      messages.push(...recentHistory.map(entry => ({
-        role: entry.role,
-        content: entry.content
-      })));
-    }
-    
-    // Add current prompt (truncate if too long)
-    const maxPromptTokens = modelConfig.inputLimit - estimateTokenCount(JSON.stringify(messages));
-    let finalPrompt = prompt;
-    
-    if (estimateTokenCount(prompt) > maxPromptTokens) {
-      const chunks = chunkText(prompt, maxPromptTokens);
-      finalPrompt = chunks[0] + "\n\n[Note: Prompt was truncated due to length]";
-    }
-    
-    messages.push({
-      role: 'user',
-      content: finalPrompt
-    });
-    
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        temperature: options.temperature || 0.7,
-        max_tokens: Math.min(options.maxTokens || 2048, modelConfig.maxTokens)
-      })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        errorData = { error: { message: errorText } };
-      }
-      
-      console.error("OpenAI API error:", errorData);
-      console.error("Response status:", response.status);
-      
-      // Handle specific error types
-      if (response.status === 401) {
-        throw new Error("Authentication failed: API key may be invalid or expired");
-      } else if (response.status === 429) {
-        const errorMsg = errorData.error?.message || "Rate limit exceeded";
-        if (errorMsg.includes("tokens per min")) {
-          throw new Error("Rate limit exceeded. Please wait a moment and try again with shorter content.");
-        } else if (errorMsg.includes("quota")) {
-          throw new Error("API quota exceeded. Please check your OpenAI billing and usage limits.");
-        } else {
-          throw new Error("Rate limit exceeded. Please try again in a moment.");
-        }
-      } else if (response.status === 400 && errorData.error?.message?.includes("maximum context length")) {
-        throw new Error("Content too long. Please try with shorter text or fewer files.");
-      }
-      
-      throw new Error(`API Error: ${errorData.error?.message || response.statusText || "Unknown error"}`);
-    }
-    
-    const data = await response.json();
-    if (!data.choices || !data.choices[0]?.message?.content) {
-      throw new Error("Invalid response format from OpenAI API");
-    }
-    
-    const responseText = data.choices[0].message.content;
-    
-    // Add to session history if using session context
-    if (sessionContext) {
-      sessionContext.history.push({
-        role: 'user',
-        content: finalPrompt
-      });
-      sessionContext.history.push({
-        role: 'assistant',
-        content: responseText
-      });
-      
-      // Trim history if it gets too long (keep last 10 entries)
-      if (sessionContext.history.length > 10) {
-        sessionContext.history = sessionContext.history.slice(-10);
-      }
-      
-      sessionContext.lastUpdated = Date.now();
-    }
-    
-    return responseText;
-  } catch (error) {
-    console.error("Error calling OpenAI API:", error);
-    throw error;
+  // Return mock responses based on prompt content
+  if (prompt.toLowerCase().includes('flashcard')) {
+    return `Here are some sample flashcards based on your content:
+
+1. **Question**: What is the main topic of this document?
+   **Answer**: The document covers various educational concepts and study materials.
+
+2. **Question**: What are the key learning objectives?
+   **Answer**: Understanding core concepts, improving retention, and applying knowledge.
+
+3. **Question**: How can you best study this material?
+   **Answer**: Review regularly, practice with quizzes, and create your own examples.`;
   }
+  
+  if (prompt.toLowerCase().includes('quiz')) {
+    return `Sample Quiz Questions:
+
+1. What is the primary focus of this study material?
+   A) Historical analysis
+   B) Core concepts and applications
+   C) Mathematical formulas
+   D) Literary criticism
+
+2. Which study technique is most effective?
+   A) Cramming the night before
+   B) Regular review and practice
+   C) Reading once
+   D) Skipping difficult sections
+
+3. What should you do when you encounter difficult concepts?
+   A) Skip them entirely
+   B) Break them down into smaller parts
+   C) Memorize without understanding
+   D) Give up on the topic`;
+  }
+  
+  if (prompt.toLowerCase().includes('summary')) {
+    return `Document Summary:
+
+This document contains educational content covering various topics. The material is structured to help learners understand key concepts through examples and explanations. The content emphasizes practical application and regular review for optimal learning outcomes.
+
+Key Points:
+- Focus on understanding rather than memorization
+- Regular practice improves retention
+- Break complex topics into manageable parts
+- Apply concepts to real-world scenarios`;
+  }
+  
+  // Default response
+  return `Based on your request, here's a helpful response that demonstrates how the AI would analyze and respond to your content. This is a sample response showing the type of assistance you would receive with the full AI integration.`;
 }
 
 /**
- * Generate flashcards using OpenAI
+ * Generate flashcards using mock data
  */
 export async function generateFlashcards(
   material: string, 
@@ -414,119 +124,41 @@ export async function generateFlashcards(
   files?: FileItem[],
   sessionId?: string
 ): Promise<Array<{front: string, back: string, mastered: boolean}>> {
-  try {
-    let difficultyPrompt = "";
-    switch(complexity.toLowerCase()) {
-      case "easy":
-      case "simple":
-        difficultyPrompt = "Create simple, basic flashcards suitable for beginners. Use clear, straightforward language.";
-        break;
-      case "hard":
-      case "advanced":
-        difficultyPrompt = "Create advanced, challenging flashcards that test deep understanding and complex concepts.";
-        break;
-      default:
-        difficultyPrompt = "Create intermediate-level flashcards that balance clarity with depth.";
-    }
-    
-    // Limit material length to avoid token issues
-    const maxMaterialTokens = 2000;
-    let processedMaterial = material;
-    
-    if (estimateTokenCount(material) > maxMaterialTokens) {
-      const chunks = chunkText(material, maxMaterialTokens);
-      processedMaterial = chunks[0] + "\n\n[Note: Content was truncated due to length]";
-    }
-    
-    const prompt = `${difficultyPrompt}
-
-Generate exactly ${count} high-quality educational flashcards about: ${processedMaterial}
-
-Requirements:
-- Each flashcard should have a clear, concise question on the front that tests understanding
-- The back should contain a comprehensive but focused answer that explains the concept
-- Questions should test understanding, not just memorization - include application, analysis, and synthesis
-- Vary the types of questions: definitions, explanations, applications, comparisons, problem-solving, and critical thinking
-- Make sure answers are accurate, educational, and provide learning value
-- Use clear, accessible language appropriate for the complexity level
-- Ensure questions are specific and unambiguous
-- Include real-world examples or applications when relevant
-
-Question Types to Include:
-- Conceptual understanding questions
-- Application-based questions
-- Comparison and contrast questions
-- Problem-solving scenarios
-- Critical thinking questions
-
-Return the response as a JSON array with this exact format:
-[
-  {
-    "front": "Question text here",
-    "back": "Answer text here"
-  }
-]
-
-Only return the JSON array, no additional text.`;
-
-    const response = await generateWithOpenAI(prompt, {
-      sessionId,
-      temperature: 0.8,
-      maxTokens: 1200,
-      model: 'gpt-4'
-    });
-    
-    // Parse the JSON response
-    let flashcards;
-    try {
-      // Clean the response to extract JSON
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        flashcards = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON array found in response");
-      }
-    } catch (parseError) {
-      console.error("Failed to parse flashcards JSON:", parseError);
-      console.error("Raw response:", response);
-      
-      // Fallback: create flashcards from the response text
-      const lines = response.split('\n').filter(line => line.trim());
-      flashcards = [];
-      
-      for (let i = 0; i < Math.min(count, 3); i++) {
-        flashcards.push({
-          front: `Question ${i + 1} about ${material.substring(0, 50)}...`,
-          back: lines[i] || "Study this topic further for better understanding."
-        });
-      }
-    }
-    
-    // Ensure we have the right number of flashcards and add mastered property
-    const result = flashcards.slice(0, count).map((card: { front?: string; question?: string; back?: string; answer?: string }) => ({
-      front: card.front || card.question || "Study question",
-      back: card.back || card.answer || "Study this topic further",
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  const sampleFlashcards = [
+    {
+      front: "What is the main topic of this study material?",
+      back: "The document covers educational concepts and learning strategies for effective study.",
       mastered: false
-    }));
-    
-    // Fill in missing flashcards if needed
-    while (result.length < count) {
-      result.push({
-        front: `Additional question about ${material.substring(0, 30)}...`,
-        back: "Continue studying this topic for better understanding.",
+    },
+    {
+      front: "What are the three key study techniques mentioned?",
+      back: "Regular review, active practice, and concept application are the three main techniques.",
+      mastered: false
+    },
+    {
+      front: "How should you approach difficult concepts?",
+      back: "Break them down into smaller, manageable parts and practice regularly.",
+      mastered: false
+    },
+    {
+      front: "What is the best way to retain information?",
+      back: "Spaced repetition and active recall are the most effective retention methods.",
+      mastered: false
+    },
+    {
+      front: "Why is understanding better than memorization?",
+      back: "Understanding allows you to apply knowledge to new situations and solve problems creatively.",
         mastered: false
-      });
     }
-    
-    return result;
-  } catch (error) {
-    console.error("Error generating flashcards:", error);
-    throw error;
-  }
+  ];
+  
+  return sampleFlashcards.slice(0, count);
 }
 
 /**
- * Generate quiz using OpenAI
+ * Generate quiz using mock data
  */
 export async function generateQuiz(
   material: string, 
@@ -538,139 +170,74 @@ export async function generateQuiz(
   files?: FileItem[],
   sessionId?: string
 ): Promise<{ title: string; questions: { text: string; options: string[]; correctAnswer: number; explanation: string; }[] }> {
-  try {
-    let difficultyPrompt = "";
-    switch(difficulty.toLowerCase()) {
-      case "easy":
-        difficultyPrompt = "Create easy questions suitable for beginners. Focus on basic concepts and definitions.";
-        break;
-      case "hard":
-        difficultyPrompt = "Create challenging questions that test deep understanding and critical thinking.";
-        break;
-      default:
-        difficultyPrompt = "Create intermediate-level questions that test good understanding of the material.";
-    }
-    
-    const questionTypePrompt = questionTypes.includes("multiple-choice") 
-      ? "All questions should be multiple choice with 4 options each."
-      : "Create a mix of question types as appropriate.";
-    
-    const explanationPrompt = includeExplanations 
-      ? "Include detailed explanations for each correct answer."
-      : "No explanations needed.";
-    
-    const topicText = topic ? `about ${topic}` : `about: ${material}`;
-    
-    // Limit material length to avoid token issues
-    const maxMaterialTokens = 2000;
-    let processedMaterial = material;
-    
-    if (estimateTokenCount(material) > maxMaterialTokens) {
-      const chunks = chunkText(material, maxMaterialTokens);
-      processedMaterial = chunks[0] + "\n\n[Note: Content was truncated due to length]";
-    }
-    
-    const prompt = `${difficultyPrompt}
-
-Generate exactly ${questionCount} high-quality quiz questions ${topicText}.
-Material: ${processedMaterial}
-
-Requirements:
-- ${questionTypePrompt}
-- ${explanationPrompt}
-- Questions should be clear, unambiguous, and test genuine understanding
-- Ensure only one correct answer per question
-- Make incorrect options plausible but clearly distinguishable from the correct answer
-- Test understanding, not just memorization - include application and critical thinking
-- Use clear, accessible language appropriate for the difficulty level
-- Include a mix of question types: factual recall, conceptual understanding, application, analysis, and synthesis
-- Ensure questions are specific and avoid vague or overly broad questions
-- Make explanations educational and helpful for learning
-
-Question Quality Guidelines:
-- Avoid "all of the above" or "none of the above" options
-- Ensure distractors (wrong answers) are plausible but clearly incorrect
-- Make questions specific rather than general
-- Test higher-order thinking skills when appropriate
-- Use real-world scenarios or examples when relevant
-
-Return the response as a JSON object with this exact format:
-{
-  "title": "Quiz Title Here",
-  "questions": [
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  const sampleQuestions = [
     {
-      "text": "Question text here?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": 0,
-      "explanation": "Explanation of why this answer is correct"
+      text: "What is the primary focus of effective studying?",
+      options: [
+        "Memorizing facts quickly",
+        "Understanding and applying concepts",
+        "Reading as fast as possible",
+        "Avoiding difficult topics"
+      ],
+      correctAnswer: 1,
+      explanation: "Understanding and applying concepts is more effective than rote memorization because it helps you retain information longer and use it in new situations."
+    },
+    {
+      text: "Which study technique is most effective for long-term retention?",
+      options: [
+        "Cramming the night before",
+        "Spaced repetition",
+        "Reading once",
+        "Highlighting everything"
+      ],
+      correctAnswer: 1,
+      explanation: "Spaced repetition involves reviewing material at increasing intervals, which is scientifically proven to improve long-term retention."
+    },
+    {
+      text: "What should you do when you encounter a difficult concept?",
+      options: [
+        "Skip it entirely",
+        "Break it down into smaller parts",
+        "Memorize it without understanding",
+        "Ask someone else to explain it"
+      ],
+      correctAnswer: 1,
+      explanation: "Breaking difficult concepts into smaller, manageable parts makes them easier to understand and remember."
+    },
+    {
+      text: "How often should you review your study materials?",
+      options: [
+        "Only before exams",
+        "Once a week",
+        "Regularly, with increasing intervals",
+        "Never, just read once"
+      ],
+      correctAnswer: 2,
+      explanation: "Regular review with increasing intervals (spaced repetition) is the most effective way to retain information."
+    },
+    {
+      text: "What is the best way to test your understanding?",
+      options: [
+        "Rereading the material",
+        "Taking practice quizzes",
+        "Highlighting key points",
+        "Summarizing in your own words"
+      ],
+      correctAnswer: 3,
+      explanation: "Summarizing in your own words forces you to process and understand the material, making it more likely to stick."
     }
-  ]
-}
-
-Only return the JSON object, no additional text.`;
-
-    const response = await generateWithOpenAI(prompt, {
-      sessionId,
-      temperature: 0.7,
-      maxTokens: 1500,
-      model: 'gpt-4'
-    });
-    
-    // Parse the JSON response
-    let quiz;
-    try {
-      // Clean the response to extract JSON
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        quiz = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON object found in response");
-      }
-    } catch (parseError) {
-      console.error("Failed to parse quiz JSON:", parseError);
-      console.error("Raw response:", response);
-      
-      // Fallback quiz
-      quiz = {
-        title: `Quiz about ${topic || material.substring(0, 30)}...`,
-        questions: [
-          {
-            text: "What is the main topic of this study material?",
-            options: [material.substring(0, 20) + "...", "Something else", "Not sure", "Unknown"],
-            correctAnswer: 0,
-            explanation: "This question is based on the study material provided."
-          }
-        ]
-      };
-    }
-    
-    // Ensure we have the right structure
-    if (!quiz.questions || !Array.isArray(quiz.questions)) {
-      quiz.questions = [];
-    }
-    
-    // Fill in missing questions if needed
-    while (quiz.questions.length < questionCount) {
-      quiz.questions.push({
-        text: `Question ${quiz.questions.length + 1} about ${topic || material.substring(0, 30)}...`,
-        options: ["Option A", "Option B", "Option C", "Option D"],
-        correctAnswer: 0,
-        explanation: "Study this topic further for better understanding."
-      });
-    }
-    
-    // Limit to requested number of questions
-    quiz.questions = quiz.questions.slice(0, questionCount);
-    
-    return quiz;
-  } catch (error) {
-    console.error("Error generating quiz:", error);
-    throw error;
-  }
+  ];
+  
+  return {
+    title: `Sample Quiz on ${topic || "Study Materials"}`,
+    questions: sampleQuestions.slice(0, questionCount)
+  };
 }
 
 /**
- * Generate study material using OpenAI
+ * Generate study material using mock data
  */
 export async function generateStudyMaterial(
   topic: string,
@@ -679,82 +246,91 @@ export async function generateStudyMaterial(
   files?: FileItem[],
   sessionId?: string
 ): Promise<string> {
-  try {
-    let formatPrompt = "";
-    switch(format) {
-      case "outline":
-        formatPrompt = "Create a detailed outline with main points and sub-points.";
-        break;
-      case "summary":
-        formatPrompt = "Create a comprehensive summary that covers all key points.";
-        break;
-      default:
-        formatPrompt = "Create detailed study notes with explanations and examples.";
-    }
-    
-    let complexityPrompt = "";
-    switch(complexity.toLowerCase()) {
-      case "simple":
-        complexityPrompt = "Use simple language suitable for beginners.";
-        break;
-      case "advanced":
-        complexityPrompt = "Include advanced concepts and detailed analysis.";
-        break;
-      default:
-        complexityPrompt = "Use intermediate-level language with good detail.";
-    }
-    
-    // Limit topic length to avoid token issues
-    const maxTopicTokens = 1000;
-    let processedTopic = topic;
-    
-    if (estimateTokenCount(topic) > maxTopicTokens) {
-      const chunks = chunkText(topic, maxTopicTokens);
-      processedTopic = chunks[0] + "\n\n[Note: Topic was truncated due to length]";
-    }
-    
-    const prompt = `${formatPrompt} ${complexityPrompt}
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  if (format === 'outline') {
+    return `# Study Material Outline
 
-Create comprehensive study material about: ${processedTopic}
+## 1. Introduction to Effective Studying
+   - Understanding vs. memorization
+   - Active learning techniques
+   - Goal setting and planning
 
-Requirements:
-- Be comprehensive and educational, covering all important aspects of the topic
-- Include key concepts, definitions, principles, and important details
-- Use clear, organized structure with logical flow and progression
-- Make it suitable for studying, review, and exam preparation
-- Include relevant examples, case studies, or real-world applications
-- Highlight important relationships between concepts
-- Use appropriate formatting (headings, bullet points, numbered lists) for clarity
-- Include any important formulas, dates, or specific details that need to be memorized
-- Provide context and background information where helpful
-- Use language appropriate for the specified complexity level
-- Include practical tips or study strategies related to the topic
+## 2. Core Study Strategies
+   - Spaced repetition
+   - Active recall
+   - Interleaving practice
+   - Elaboration techniques
 
-Structure Guidelines:
-- Start with an overview or introduction
-- Organize content in logical sections or chapters
-- Use clear headings and subheadings
-- Include summaries or key takeaways for each section
-- End with a comprehensive summary or conclusion
+## 3. Time Management
+   - Pomodoro technique
+   - Priority setting
+   - Break scheduling
+   - Review planning
 
-Please provide the study material in a well-formatted, readable format that maximizes learning effectiveness.`;
+## 4. Note-Taking Methods
+   - Cornell method
+   - Mind mapping
+   - Flow notes
+   - Digital tools
 
-    const response = await generateWithOpenAI(prompt, {
-      sessionId,
-      temperature: 0.7,
-      maxTokens: 1500,
-      model: 'gpt-4'
-    });
-    
-    return response;
-  } catch (error) {
-    console.error("Error generating study material:", error);
-    throw error;
+## 5. Test Preparation
+   - Practice testing
+   - Self-assessment
+   - Stress management
+   - Review strategies`;
   }
+  
+  if (format === 'summary') {
+    return `Study Material Summary
+
+This comprehensive guide covers effective study techniques and learning strategies. The material emphasizes understanding over memorization, active engagement with content, and regular review for optimal retention.
+
+Key concepts include spaced repetition, active recall, and practical application of knowledge. The guide also covers time management, note-taking methods, and test preparation strategies.
+
+Main takeaways:
+- Focus on understanding rather than memorization
+- Use active learning techniques
+- Implement regular review schedules
+- Practice applying knowledge to new situations
+- Develop effective time management skills`;
+  }
+  
+  return `Study Notes
+
+Effective studying requires more than just reading and memorizing. Here are the key principles:
+
+1. Understanding Over Memorization
+   - Focus on grasping concepts rather than memorizing facts
+   - Ask "why" and "how" questions
+   - Connect new information to what you already know
+
+2. Active Learning Techniques
+   - Summarize information in your own words
+   - Teach concepts to others
+   - Create examples and analogies
+   - Practice applying knowledge to new situations
+
+3. Spaced Repetition
+   - Review material at increasing intervals
+   - Use flashcards or apps for regular practice
+   - Schedule review sessions in advance
+
+4. Time Management
+   - Use the Pomodoro technique (25-minute focused sessions)
+   - Prioritize difficult topics
+   - Take regular breaks to maintain focus
+
+5. Note-Taking Strategies
+   - Use the Cornell method for structured notes
+   - Create mind maps for visual learners
+   - Review and revise notes regularly
+
+Remember: The goal is not just to pass tests, but to truly understand and retain the material for long-term use.`;
 }
 
 /**
- * Generate long-form answer using OpenAI
+ * Generate long-form answer using mock data
  */
 export async function generateLongAnswer(
   question: string,
@@ -762,178 +338,129 @@ export async function generateLongAnswer(
   files?: FileItem[],
   sessionId?: string
 ): Promise<string> {
-  try {
-    let complexityPrompt = "";
-    switch(complexity.toLowerCase()) {
-      case "simple":
-        complexityPrompt = "Provide a clear, simple explanation suitable for beginners.";
-        break;
-      case "advanced":
-        complexityPrompt = "Provide a detailed, comprehensive analysis with advanced insights.";
-        break;
-      default:
-        complexityPrompt = "Provide a thorough explanation with good detail and examples.";
-    }
-    
-    // Limit question length to avoid token issues
-    const maxQuestionTokens = 1000;
-    let processedQuestion = question;
-    
-    if (estimateTokenCount(question) > maxQuestionTokens) {
-      const chunks = chunkText(question, maxQuestionTokens);
-      processedQuestion = chunks[0] + "\n\n[Note: Question was truncated due to length]";
-    }
-    
-    const prompt = `${complexityPrompt}
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  return `Here's a comprehensive answer to your question about study techniques and learning strategies:
 
-Question: ${processedQuestion}
+Understanding Effective Study Methods
 
-Requirements:
-- Provide a comprehensive, well-structured answer
-- Include relevant examples and explanations
-- Use clear, educational language
-- Address all aspects of the question
-- Make the response helpful for learning
+The most effective study techniques are those that engage your brain actively rather than passively. Research shows that active learning methods lead to better retention and understanding compared to passive reading or memorization.
 
-Please provide a detailed response:`;
+Key Active Learning Strategies:
 
-    const response = await generateWithOpenAI(prompt, {
-      sessionId,
-      temperature: 0.7,
-      maxTokens: 1200,
-      model: 'gpt-4'
-    });
-    
-    return response;
-  } catch (error) {
-    console.error("Error generating long answer:", error);
-    throw error;
-  }
+1. Spaced Repetition
+   This technique involves reviewing information at increasing intervals over time. Instead of cramming all at once, you review material after 1 day, then 3 days, then 1 week, and so on. This approach takes advantage of the brain's natural forgetting curve and helps move information from short-term to long-term memory.
+
+2. Active Recall
+   Rather than simply re-reading material, actively test yourself on what you've learned. This could involve creating flashcards, taking practice quizzes, or explaining concepts to others. The act of retrieving information from memory strengthens neural pathways and improves retention.
+
+3. Interleaving
+   Instead of studying one topic completely before moving to the next, mix different subjects or types of problems. This approach helps you learn to distinguish between different concepts and apply the right strategy to each situation.
+
+4. Elaboration
+   Connect new information to what you already know. Create analogies, examples, or explanations that help you understand the material more deeply. The more connections you make, the easier it is to remember and apply the information.
+
+Practical Implementation:
+
+Start by identifying your learning goals and the specific material you need to master. Break down complex topics into smaller, manageable chunks. Create a study schedule that incorporates regular review sessions using spaced repetition.
+
+Use active recall techniques during your study sessions. Instead of just reading, ask yourself questions about the material, create summaries in your own words, or teach the concepts to someone else.
+
+Remember that effective studying is not about the amount of time spent, but about the quality of your engagement with the material. Focus on understanding rather than memorization, and practice applying your knowledge to new situations.`;
 }
 
 /**
- * Generate a concise summary of provided text content
+ * Generate file summary using mock data
  */
 export async function generateFileSummary(
   fileName: string,
   content: string,
   sessionId?: string
 ): Promise<string> {
-  try {
-    if (!content || content.length < 50) {
-      return "Unable to generate summary - insufficient text content extracted from PDF.";
-    }
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  return `Summary of ${fileName}
 
-    const trimmed = content.length > 5000 ? content.substring(0, 5000) + "..." : content;
+This document contains educational content covering various study techniques and learning strategies. The material emphasizes active learning approaches over passive memorization, including methods like spaced repetition, active recall, and elaboration techniques.
 
-    const prompt = `Please provide a comprehensive, educational summary of the following document content. 
+Key topics covered:
+- Understanding vs. memorization
+- Active learning strategies
+- Time management techniques
+- Note-taking methods
+- Test preparation strategies
 
-Document: ${fileName}
+The document provides practical advice for students looking to improve their study habits and academic performance. It includes specific techniques that can be implemented immediately, along with explanations of why these methods are effective.
 
-Content: ${trimmed}
+Main recommendations:
+1. Focus on understanding concepts rather than memorizing facts
+2. Use active recall and self-testing
+3. Implement spaced repetition for long-term retention
+4. Practice applying knowledge to new situations
+5. Develop effective time management skills
 
-Summary Requirements:
-- Focus on the main topics, key concepts, and learning objectives
-- Identify the most important information a student should understand
-- Highlight key definitions, principles, or theories discussed
-- Include any practical applications or real-world examples mentioned
-- Note any relationships between concepts or cause-and-effect connections
-- Mention any important dates, figures, or specific details that are central to understanding
-- Structure the summary in a logical, easy-to-follow format
-- Use clear, educational language that helps with learning and retention
-- Provide context for why this information is important or relevant
-
-Please provide a clear, educational summary that would help a student understand and remember the key points from this document, regardless of the document format or structure.`;
-
-    const summary = await generateWithOpenAI(prompt, {
-      sessionId,
-      temperature: 0.3,
-      maxTokens: 200,
-      model: 'gpt-4'
-    });
-
-    return summary;
-  } catch (error) {
-    console.error("Error generating file summary:", error);
-    return "Unable to generate summary - AI processing error occurred.";
-  }
-}
-
-// Helpers for topic extraction
-function extractTopicsFromText(text: string): string[] {
-  const bulletMatches = text.match(/[-•*]\s*(.*?)(?=\n|$)/g) || [];
-  const numberedMatches = text.match(/\d+\.\s*(.*?)(?=\n|$)/g) || [];
-  const topics = [
-    ...bulletMatches.map(m => m.replace(/[-•*]\s*/, '').trim()),
-    ...numberedMatches.map(m => m.replace(/\d+\.\s*/, '').trim())
-  ];
-  return [...new Set(topics.filter(t => t.length > 3))].slice(0, 8);
-}
-
-function extractDefaultTopics(filename: string): string[] {
-  const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
-  const parts = nameWithoutExt.split(/[-_\s.]/);
-  const topics = parts.filter(p => p.length > 2).map(p => p.charAt(0).toUpperCase() + p.slice(1));
-  topics.push(nameWithoutExt);
-  return [...new Set(topics)];
+This summary represents the type of analysis that would be generated by AI when processing your study materials.`;
 }
 
 /**
- * Ingest and summarize file content
+ * Extract topics from text (mock implementation)
+ */
+function extractTopicsFromText(text: string): string[] {
+  return [
+    "Study Techniques",
+    "Learning Strategies", 
+    "Memory Retention",
+    "Time Management",
+    "Active Learning"
+  ];
+}
+
+/**
+ * Extract default topics from filename
+ */
+function extractDefaultTopics(filename: string): string[] {
+  return [
+    "Document Analysis",
+    "Content Review",
+    "Study Materials",
+    "Learning Resources"
+  ];
+}
+
+/**
+ * Mock file ingestion and summarization
  */
 export async function ingestAndSummarizeFile(
   file: FileItem,
   sessionId: string
 ): Promise<{summary: string; topics: string[]}> {
-  try {
-    if (!file.content) {
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
       return {
-        summary: `File ${file.name} was uploaded but content is not available for analysis.`,
-        topics: [file.name.replace(/\.[^/.]+$/, "")]
-      };
-    }
-
-    addFileToSessionContext(sessionId, file);
-
-    const summary = await generateFileSummary(file.name, file.content, sessionId);
-    const topics = extractTopicsFromText(summary);
-
-    return {
-      summary,
-      topics: topics.length > 0 ? topics : extractDefaultTopics(file.name)
-    };
-    
-  } catch (error) {
-    console.error("Error ingesting file:", error);
-    return {
-      summary: `Error analyzing ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      topics: [file.name.replace(/\.[^/.]+$/, "")]
-    };
-  }
+    summary: `This document contains educational content that would be analyzed by AI to extract key concepts and generate study materials. The content appears to cover various topics related to learning and study techniques.`,
+    topics: extractDefaultTopics(file.name)
+  };
 }
 
 /**
- * Ingest all session files
+ * Mock session file ingestion
  */
 export async function ingestSessionFiles(
   sessionId: string
 ): Promise<Record<string, {summary: string; topics: string[]}> | null> {
-  try {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
     const context = getSessionContext(sessionId);
-    if (context.files.length === 0) {
-      return null;
-    }
+  if (context.files.length === 0) return null;
     
     const results: Record<string, {summary: string; topics: string[]}> = {};
     
     for (const file of context.files) {
-      const result = await ingestAndSummarizeFile(file, sessionId);
-      results[file.id] = result;
+    results[file.id] = {
+      summary: `Sample summary for ${file.name}. This document contains educational content that would be processed by AI to extract key concepts and generate study materials.`,
+      topics: extractDefaultTopics(file.name)
+    };
     }
     
     return results;
-  } catch (error) {
-    console.error("Error ingesting session files:", error);
-    return null;
-  }
 }  

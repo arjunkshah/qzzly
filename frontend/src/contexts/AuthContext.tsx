@@ -11,7 +11,6 @@ import {
   logoutUser, 
   getCurrentUser 
 } from '@/services/authService';
-import { supabase } from '@/services/supabaseClient';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -26,45 +25,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  // Listen for Supabase auth state changes (Google OAuth, etc.)
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const supaUser = session.user;
-        const newUser = {
-          id: supaUser.id,
-          email: supaUser.email,
-          name: supaUser.user_metadata?.name || supaUser.email,
-          subscription: {
-            plan: 'free' as 'free',
-            status: 'active' as 'active',
-            startDate: new Date().toISOString(),
-          },
-          sessionCount: 0,
-          createdat: new Date().toISOString(),
-          updatedat: new Date().toISOString(),
-          usage: {
-            monthlySessions: 0,
-            monthlyFiles: 0,
-            currentMonth: new Date().toISOString().slice(0, 7), // YYYY-MM
-            lastResetDate: new Date().toISOString(),
-          },
-        };
-        setUser(newUser);
-        localStorage.setItem('quiz_io_current_user', JSON.stringify(newUser));
-      } else {
-        setUser(null);
-        localStorage.removeItem('quiz_io_current_user');
-      }
-    });
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
-  }, []);
-
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-    setIsLoading(true);
+      setIsLoading(true);
       const success = await loginUser({ email, password });
       if (success) {
         const currentUser = getCurrentUser();
@@ -81,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
     try {
-    setIsLoading(true);
+      setIsLoading(true);
       const success = await signupUser({ email, password, name });
       if (success) {
         const currentUser = getCurrentUser();
@@ -101,12 +64,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
-  // Google OAuth with Supabase
+  // Mock Google OAuth
   const signInWithGoogle = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-      if (error) throw error;
+      // Simulate Google OAuth
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockUser = {
+        id: `google_user_${Date.now()}`,
+        email: 'demo@example.com',
+        name: 'Demo User',
+        subscription: {
+          plan: 'free' as 'free',
+          status: 'active' as 'active',
+          startDate: new Date().toISOString(),
+        },
+        sessionCount: 0,
+        createdat: new Date().toISOString(),
+        updatedat: new Date().toISOString(),
+        usage: {
+          monthlySessions: 0,
+          monthlyFiles: 0,
+          currentMonth: new Date().toISOString().slice(0, 7), // YYYY-MM
+          lastResetDate: new Date().toISOString(),
+        },
+      };
+      
+      setUser(mockUser);
+      localStorage.setItem('quiz_io_current_user', JSON.stringify(mockUser));
     } catch (error) {
       console.error('Google sign-in error:', error);
     } finally {
@@ -114,14 +100,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Add updateSubscription for promo code and Stripe
+  // Mock subscription update
   const updateSubscription = async (plan: 'pro', promoCode?: string): Promise<boolean> => {
     if (!user) return false;
+    
     if (promoCode && promoCode.trim().toUpperCase() === 'BETAX') {
-      // Upgrade user in Supabase
-      const { data, error } = await supabase
-        .from('users')
-        .update({
+      // Mock upgrade with promo code
+      const updatedUser = {
+        ...user,
+        subscription: {
+          ...user.subscription,
+          plan: 'pro',
+          status: 'active',
+          startDate: new Date().toISOString(),
+        },
+        updatedat: new Date().toISOString(),
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem('quiz_io_current_user', JSON.stringify(updatedUser));
+      return true;
+    } else {
+      // Mock Stripe integration
+      try {
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Mock successful subscription update
+        const updatedUser = {
+          ...user,
           subscription: {
             ...user.subscription,
             plan: 'pro',
@@ -129,28 +136,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             startDate: new Date().toISOString(),
           },
           updatedat: new Date().toISOString(),
-        })
-        .eq('id', user.id)
-        .select()
-        .single();
-      if (error || !data) return false;
-      setUser(data);
-      localStorage.setItem('quiz_io_current_user', JSON.stringify(data));
-      return true;
-    } else {
-      // Stripe integration (real)
-      try {
-        const response = await fetch('/api/stripe/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: user.email }),
-        });
-        const data = await response.json();
-        if (!data.sessionId) throw new Error('No sessionId returned');
-        const stripe = (window as any).Stripe('pk_live_51RVffABQXLankofpEeazK4UBPF7EdNu7OcFKOODi3bhTaEKOQzI4vp0CjHdpXsfADS7y6FRc4TP2aHhddhgZlVIr007hUVoS0P');
-        await stripe.redirectToCheckout({ sessionId: data.sessionId });
+        };
+        
+        setUser(updatedUser);
+        localStorage.setItem('quiz_io_current_user', JSON.stringify(updatedUser));
         return true;
       } catch (e) {
+        console.error('Subscription update failed:', e);
         return false;
       }
     }
@@ -208,32 +200,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setUser(updatedUser);
     localStorage.setItem('quiz_io_current_user', JSON.stringify(updatedUser));
-    
-    // Update in Supabase
-    try {
-      await supabase
-        .from('users')
-        .update({
-          usage: updatedUser.usage,
-          updatedat: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-    } catch (error) {
-      console.error('Failed to update usage in database:', error);
-    }
   };
 
   const value: AuthContextType = {
-      user, 
-      isAuthenticated: !!user, 
-      login, 
-      signup, 
-      logout, 
-      isLoading,
-      signInWithGoogle,
-      updateSubscription,
-      checkUsageLimit,
-      incrementUsage
+    user,
+    isAuthenticated: !!user,
+    login,
+    signup,
+    logout,
+    isLoading,
+    signInWithGoogle,
+    updateSubscription,
+    checkUsageLimit,
+    incrementUsage,
   };
 
   return (

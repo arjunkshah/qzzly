@@ -32,31 +32,32 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
     return text;
   }
 
-  async function generateFlashcards(pdfText: string, apiKey: string, model = "gpt-4-turbo") {
-    const prompt = `You are an expert study assistant. Read the following document and generate a set of flashcards (question and answer pairs) that help a student learn the key concepts. Format as JSON: [ {"question": "...", "answer": "..."}, ... ] Document: ${pdfText}`;
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+  async function generateMockFlashcards(pdfText: string) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    return [
+      {
+        front: "What is the main topic of this document?",
+        back: "The document covers various educational concepts and study materials."
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "You are a helpful assistant for creating study materials." },
-          { role: "user", content: prompt }
-        ],
-        max_tokens: 2000,
-        temperature: 0.3,
-      }),
-    });
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content || "";
-    try {
-      return JSON.parse(content);
-    } catch {
-      return content;
-    }
+      {
+        front: "What are the key learning objectives?",
+        back: "Understanding core concepts, improving retention, and applying knowledge."
+      },
+      {
+        front: "How can you best study this material?",
+        back: "Review regularly, practice with quizzes, and create your own examples."
+      },
+      {
+        front: "What is the most effective study technique mentioned?",
+        back: "Active recall and spaced repetition are the most effective techniques."
+      },
+      {
+        front: "Why is understanding better than memorization?",
+        back: "Understanding allows you to apply knowledge to new situations and solve problems creatively."
+      }
+    ];
   }
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -79,20 +80,13 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
       setFileName(file.name);
       const text = await extractTextFromPDF(file);
       toast({ title: "PDF Loaded", description: `Extracted ${text.length} characters from ${file.name}` });
-      // Get API key from env or prompt user
-      let apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        apiKey = prompt("Enter your OpenAI API key:") || "";
-      }
-      if (!apiKey) {
-        toast({ title: "API Key Required", description: "OpenAI API key is required to generate flashcards.", variant: "destructive" });
-        return;
-      }
-      toast({ title: "Generating Flashcards", description: "Sending to OpenAI..." });
-      const flashcards = await generateFlashcards(text, apiKey);
+      
+      toast({ title: "Generating Flashcards", description: "Creating sample flashcards..." });
+      const flashcards = await generateMockFlashcards(text);
       setResults(flashcards);
-      toast({ title: "Done!", description: "Flashcards generated." });
-      // Optionally, call onFileAdded to save to session
+      toast({ title: "Done!", description: "Sample flashcards generated." });
+      
+      // Add file to session
       onFileAdded({
         id: `${Date.now()}`,
         name: file.name,
@@ -118,7 +112,7 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-semibold mb-2">Study Materials</h2>
-        <p className="text-gray-600 mb-4">Upload your PDF notes and generate flashcards instantly with AI.</p>
+        <p className="text-gray-600 mb-4">Upload your PDF notes and generate sample flashcards for demonstration.</p>
         <div
           className={`upload-area rounded-lg p-8 text-center cursor-pointer mb-6 border-2 border-dashed ${isDragging ? "border-purple-500 bg-purple-50" : "border-gray-300"}`}
           onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
@@ -142,8 +136,17 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
         {uploading && <div className="text-purple-600">Processing...</div>}
         {results && (
           <div className="mt-6">
-            <h3 className="text-lg font-bold mb-2">Generated Flashcards</h3>
-            <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm whitespace-pre-wrap">{typeof results === 'string' ? results : JSON.stringify(results, null, 2)}</pre>
+            <h3 className="text-lg font-bold mb-2">Sample Flashcards Generated</h3>
+            <div className="bg-gray-100 p-4 rounded-lg">
+              {results.map((flashcard: any, index: number) => (
+                <div key={index} className="mb-4 p-3 bg-white rounded border">
+                  <div className="font-semibold text-purple-600 mb-1">Question {index + 1}:</div>
+                  <div className="mb-2">{flashcard.front}</div>
+                  <div className="font-semibold text-green-600 mb-1">Answer:</div>
+                  <div>{flashcard.back}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

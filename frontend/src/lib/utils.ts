@@ -1,35 +1,20 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
-// Always use relative /.netlify/functions for Netlify deployment
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://qzzly-backend-hpdutnhpwa-uc.a.run.app';
-
 /**
- * Extract text from PDF using OpenAI API via backend
+ * Extract text from PDF using mock implementation
  */
 export async function extractTextFromPDF(file: File | Blob): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', file); // file must be a File or Blob
-  const response = await fetch(`${BACKEND_URL}/api/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to upload PDF to OpenAI');
-  }
-  const data = await response.json();
-  // For now, return a placeholder since we need to implement text extraction
-  // This will be enhanced when we add the OpenAI Assistants API integration
-  return `PDF uploaded successfully with ID: ${data.id}`;
+  // Mock implementation - in a real app, this would use a PDF processing library
+  return "Sample extracted text from PDF. This would contain the actual content of the uploaded document. The text would be processed and analyzed to generate study materials like flashcards, quizzes, and summaries.";
 }
 
 /**
- * Upload PDF to OpenAI API via backend
+ * Upload PDF to mock service
  */
 export async function uploadPDFToOpenAI(file: File, sessionId: string): Promise<{
   id: string;
@@ -39,26 +24,21 @@ export async function uploadPDFToOpenAI(file: File, sessionId: string): Promise<
   filename: string;
   purpose: string;
 }> {
-  const formData = new FormData();
-  formData.append('file', file); // file must be a File or Blob
-  formData.append('sessionId', sessionId); // send sessionId as form field
-  const response = await fetch(`${BACKEND_URL}/api/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to upload PDF to OpenAI');
-  }
-  return await response.json();
+  // Mock implementation
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  return {
+    id: `file_${Date.now()}`,
+    object: "file",
+    bytes: file.size,
+    created_at: Date.now(),
+    filename: file.name,
+    purpose: "assistants"
+  };
 }
 
 /**
- * Splits a long string into chunks of a specified max length (in characters).
- * Tries to break at sentence or paragraph boundaries if possible.
- * @param text The full text to split
- * @param maxLength Maximum length of each chunk (default: 4000 chars)
- * @returns string[] Array of text chunks
+ * Chunk text for processing
  */
 export function chunkText(text: string, maxLength: number = 4000): string[] {
   if (text.length <= maxLength) {
@@ -66,43 +46,25 @@ export function chunkText(text: string, maxLength: number = 4000): string[] {
   }
   
   const chunks: string[] = [];
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
   let currentChunk = '';
   
+  const sentences = text.split('. ');
   for (const sentence of sentences) {
-    const trimmedSentence = sentence.trim();
-    if ((currentChunk + trimmedSentence).length <= maxLength) {
-      currentChunk += (currentChunk ? '. ' : '') + trimmedSentence;
+    if ((currentChunk + sentence).length <= maxLength) {
+      currentChunk += (currentChunk ? '. ' : '') + sentence;
     } else {
       if (currentChunk) {
-        chunks.push(currentChunk + '.');
-        currentChunk = trimmedSentence;
+        chunks.push(currentChunk);
+        currentChunk = sentence;
       } else {
-        // If single sentence is too long, split by words
-        const words = trimmedSentence.split(' ');
-        let wordChunk = '';
-        for (const word of words) {
-          if ((wordChunk + word).length <= maxLength) {
-            wordChunk += (wordChunk ? ' ' : '') + word;
-          } else {
-            if (wordChunk) {
-              chunks.push(wordChunk);
-              wordChunk = word;
-            } else {
-              // If single word is too long, truncate
-              chunks.push(word.substring(0, maxLength));
-            }
-          }
-        }
-        if (wordChunk) {
-          currentChunk = wordChunk;
-        }
+        // If single sentence is too long, truncate
+        chunks.push(sentence.substring(0, maxLength));
       }
     }
   }
   
   if (currentChunk) {
-    chunks.push(currentChunk + (currentChunk.endsWith('.') ? '' : '.'));
+    chunks.push(currentChunk);
   }
   
   return chunks;

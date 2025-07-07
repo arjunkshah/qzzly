@@ -43,24 +43,13 @@ const HeroSection = () => {
         return;
       }
       
-      // Create a new study session with all uploaded files
-      const fileItems = Array.from(files).map((file, index) => ({
-        id: `file_${Date.now()}_${index}`,
-        name: file.name,
-        url: URL.createObjectURL(file), // In a real app, this would be a cloud storage URL
-        type: file.type,
-        uploadedAt: new Date().toISOString()
-      }));
-      
-      const newSession = await createSession({
-        title: firstFile.name.replace(/\.pdf$/, ''),
-        description: `Created from homepage upload (${files.length} file${files.length > 1 ? 's' : ''})`,
-        files: fileItems
-      });
+      // Create a new study session
+      const sessionName = firstFile.name.replace(/\.pdf$/, '');
+      const newSession = await createSession(sessionName);
       
       toast({
         title: "Files uploaded successfully",
-        description: `Created new study session with ${files.length} file${files.length > 1 ? 's' : ''}`
+        description: `Created new study session: ${sessionName}`
       });
       
       // Navigate to the new session
@@ -109,7 +98,7 @@ const HeroSection = () => {
             Transform Your <span className="gradient-text">Study Material</span> Into Interactive Quizzes
           </h1>
           <p className="text-xl text-gray-600 mb-10 leading-relaxed animate-fade-in max-w-lg" style={{ animationDelay: "0.2s" }}>
-            Upload your PDFs and let our AI generate personalized quizzes, flashcards, and mock tests to accelerate your learning journey.
+            Upload your PDFs and explore our demo features to see how AI-powered study tools can accelerate your learning journey.
           </p>
           <div className="flex flex-col sm:flex-row gap-5 animate-fade-in" style={{ animationDelay: "0.4s" }}>
             {isAuthenticated ? (
@@ -148,7 +137,7 @@ const HeroSection = () => {
               {uploading ? (
                 <div className="flex flex-col items-center">
                   <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-purple-500 mb-4"></div>
-                  <p className="text-gray-600">Uploading your files...</p>
+                  <p className="text-gray-600">Creating study session...</p>
                 </div>
               ) : (
                 <>
