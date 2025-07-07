@@ -17,7 +17,7 @@ const upload = multer();
 
 // Middleware
 app.use(cors({
-  origin: ['https://qzzly.com', 'http://localhost:3000'],
+  origin: 'https://qzzly.com',
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
