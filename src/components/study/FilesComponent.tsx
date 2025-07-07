@@ -1,43 +1,67 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { FileItem } from "@/types/session";
-import { addFileToSession } from "@/services/sessionService";
-import { generateFileSummary as openaiGenerateFileSummary } from "@/services/openaiService";
+import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { File, Upload, Download, Trash, FileText, AlertCircle } from "lucide-react";
-import { extractTextFromPDF, uploadPDFToOpenAI } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
-import { PaywallModal } from "@/components/PaywallModal";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
+import workerSrc from "pdfjs-dist/build/pdf.worker?url";
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface FilesComponentProps {
   sessionId: string;
-  files: FileItem[];
-  onFileAdded: (file: FileItem) => void;
+  files: any[];
+  onFileAdded: (file: any) => void;
 }
 
 export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponentProps) {
-  const { user, checkUsageLimit, incrementUsage } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [generatingSummaries, setGeneratingSummaries] = useState<string[]>([]);
-  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [results, setResults] = useState<any>(null);
+  const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const generateFileSummary = async (fileName: string, fileContent: string): Promise<string> => {
-    try {
-      return await openaiGenerateFileSummary(fileName, fileContent, sessionId);
-    } catch (error) {
-      console.error("Error generating file summary:", error);
-      return "Unable to generate summary - AI processing error occurred.";
+  async function extractTextFromPDF(file: File): Promise<string> {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item: any) => item.str).join(" ") + "\n\n";
     }
-  };
+    return text;
+  }
+
+  async function generateFlashcards(pdfText: string, apiKey: string, model = "gpt-4-turbo") {
+    const prompt = `You are an expert study assistant. Read the following document and generate a set of flashcards (question and answer pairs) that help a student learn the key concepts. Format as JSON: [ {"question": "...", "answer": "..."}, ... ] Document: ${pdfText}`;
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "You are a helpful assistant for creating study materials." },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 2000,
+        temperature: 0.3,
+      }),
+    });
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content || "";
+    try {
+      return JSON.parse(content);
+    } catch {
+      return content;
+    }
+  }
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileUpload(e.dataTransfer.files);
     }
@@ -45,99 +69,44 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
 
   const handleFileUpload = async (fileList: FileList) => {
     if (fileList.length === 0) return;
-    
-    // Enforce file upload limit for free users
-    if (!checkUsageLimit('file')) {
-      setPaywallOpen(true);
-      return;
-    }
-    
     setUploading(true);
     try {
-      // Process each file
-      for (let i = 0; i < fileList.length; i++) {
-        const file = fileList[i];
-        
-        if (file.type !== "application/pdf") {
-          toast({
-            title: "Error",
-            description: "Only PDF files are supported",
-            variant: "destructive",
-          });
-          continue;
-        }
-        
-        console.log(`Processing file: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
-        
-        // Upload PDF to OpenAI
-        const uploadResult = await uploadPDFToOpenAI(file, sessionId);
-        console.log("PDF uploaded to OpenAI:", uploadResult);
-        
-        // Extract text content from PDF (placeholder for now)
-        const extractedContent = await extractTextFromPDF(file);
-        console.log("Extracted content length:", extractedContent.length);
-        
-        // Provide user feedback
-        toast({
-          title: "Success",
-          description: `PDF uploaded successfully to OpenAI with ID: ${uploadResult.id}`,
-        });
-        
-        const newFile: Omit<FileItem, 'id'> = {
-          name: file.name,
-          url: URL.createObjectURL(file),
-          type: file.type,
-          uploadedAt: new Date().toISOString(),
-          content: extractedContent
-        };
-        
-        const savedFile = await addFileToSession(sessionId, newFile);
-        onFileAdded(savedFile);
-        
-        // Generate summary
-        setGeneratingSummaries(prev => [...prev, savedFile.id]);
-        
-        try {
-          console.log(`Generating summary for ${file.name} with ${extractedContent.length} characters`);
-          const summary = await generateFileSummary(file.name, extractedContent);
-          console.log("Generated summary:", summary);
-          
-          // Update the file with the summary
-          const updatedFile = { ...savedFile, summary };
-          onFileAdded(updatedFile);
-          
-          toast({
-            title: "File uploaded and analyzed",
-            description: `${file.name} has been uploaded and summarized successfully.`
-          });
-        } catch (summaryError) {
-          console.error("Summary generation failed:", summaryError);
-          toast({
-            title: "File uploaded",
-            description: `${file.name} uploaded but summary generation failed.`
-          });
-        } finally {
-          setGeneratingSummaries(prev => prev.filter(id => id !== savedFile.id));
-        }
-        
-        // Increment usage for free users after successful upload
-        if (user?.subscription.plan === 'free') {
-          await incrementUsage('file');
-        }
+      const file = fileList[0];
+      if (file.type !== "application/pdf") {
+        toast({ title: "Error", description: "Only PDF files are supported", variant: "destructive" });
+        return;
       }
-    } catch (error) {
-      console.error("File upload error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to upload file",
-        variant: "destructive",
+      setFileName(file.name);
+      const text = await extractTextFromPDF(file);
+      toast({ title: "PDF Loaded", description: `Extracted ${text.length} characters from ${file.name}` });
+      // Get API key from env or prompt user
+      let apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      if (!apiKey) {
+        apiKey = prompt("Enter your OpenAI API key:") || "";
+      }
+      if (!apiKey) {
+        toast({ title: "API Key Required", description: "OpenAI API key is required to generate flashcards.", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Generating Flashcards", description: "Sending to OpenAI..." });
+      const flashcards = await generateFlashcards(text, apiKey);
+      setResults(flashcards);
+      toast({ title: "Done!", description: "Flashcards generated." });
+      // Optionally, call onFileAdded to save to session
+      onFileAdded({
+        id: `${Date.now()}`,
+        name: file.name,
+        url: URL.createObjectURL(file),
+        type: file.type,
+        uploadedAt: new Date().toISOString(),
+        content: text,
+        flashcards,
       });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to process PDF", variant: "destructive" });
     } finally {
       setUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -145,32 +114,14 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
     fileInputRef.current?.click();
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(date);
-  };
-
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-semibold mb-2">Study Materials</h2>
-        <p className="text-gray-600 mb-4">
-          Upload your PDF notes and study materials for AI analysis. We'll extract the text content and generate summaries.
-        </p>
-        
-        {/* File upload area */}
+        <p className="text-gray-600 mb-4">Upload your PDF notes and generate flashcards instantly with AI.</p>
         <div
-          className={`upload-area rounded-lg p-8 text-center cursor-pointer mb-6 border-2 border-dashed ${
-            isDragging ? "border-purple-500 bg-purple-50" : "border-gray-300"
-          }`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
+          className={`upload-area rounded-lg p-8 text-center cursor-pointer mb-6 border-2 border-dashed ${isDragging ? "border-purple-500 bg-purple-50" : "border-gray-300"}`}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleFileDrop}
           onClick={handleBrowseClick}
@@ -178,118 +129,24 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
           <Upload className="w-12 h-12 mx-auto text-purple-500 mb-3" />
           <p className="text-gray-600 mb-2">Drag & drop your PDF files here</p>
           <p className="text-gray-400 text-sm">or</p>
-          <Button 
-            variant="outline" 
-            className="mt-2 border-purple-300 text-purple-600 hover:bg-purple-50"
-          >
-            Browse files
-          </Button>
+          <Button variant="outline" className="mt-2 border-purple-300 text-purple-600 hover:bg-purple-50">Browse files</Button>
           <input
             type="file"
             ref={fileInputRef}
             className="hidden"
             accept=".pdf"
-            multiple
-            onChange={(e) => {
-              if (e.target.files && e.target.files.length > 0) {
-                handleFileUpload(e.target.files);
-              }
-            }}
+            multiple={false}
+            onChange={e => { if (e.target.files && e.target.files.length > 0) handleFileUpload(e.target.files); }}
           />
         </div>
-        
-        {uploading && (
-          <div className="flex items-center justify-center bg-purple-50 rounded-lg p-4 mb-6">
-            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-purple-500 mr-3"></div>
-            <span>Uploading and analyzing files...</span>
-          </div>
-        )}
-        
-        {/* File list */}
-        {files.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4">
-            {files.map((file) => (
-              <Card key={file.id} className="border">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-purple-100 p-3 rounded-lg flex-shrink-0">
-                      <File className="h-6 w-6 text-purple-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-medium text-gray-900 truncate" title={file.name}>
-                            {file.name}
-                          </h3>
-                          <p className="text-gray-500 text-xs">
-                            Uploaded {formatDate(file.uploadedAt)}
-                          </p>
-                        </div>
-                        <div className="flex space-x-2 ml-4">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
-                            onClick={() => window.open(file.url, '_blank')}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {/* AI Summary Section */}
-                      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium text-blue-700">AI Summary</span>
-                        </div>
-                        
-                        {generatingSummaries.includes(file.id) ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-blue-500"></div>
-                            <span>Generating summary...</span>
-                          </div>
-                        ) : file.summary ? (
-                          <p className="text-sm text-gray-700">{file.summary}</p>
-                        ) : (
-                          <p className="text-sm text-gray-500 italic">No summary available</p>
-                        )}
-                      </div>
-                      
-                      {/* Content Preview (for debugging) */}
-                      {file.content && (
-                        <details className="mt-2">
-                          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-                            View extracted content ({file.content.length} characters)
-                          </summary>
-                          <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600 max-h-32 overflow-y-auto">
-                            {file.content.substring(0, 1000)}{file.content.length > 1000 ? "..." : ""}
-                          </div>
-                        </details>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-10 border rounded-lg bg-gray-50">
-            <File className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-900">No files yet</h3>
-            <p className="text-gray-500 mt-1">
-              Upload your first PDF to get started
-            </p>
+        {uploading && <div className="text-purple-600">Processing...</div>}
+        {results && (
+          <div className="mt-6">
+            <h3 className="text-lg font-bold mb-2">Generated Flashcards</h3>
+            <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm whitespace-pre-wrap">{typeof results === 'string' ? results : JSON.stringify(results, null, 2)}</pre>
           </div>
         )}
       </div>
-      <PaywallModal
-        isOpen={paywallOpen}
-        onClose={() => setPaywallOpen(false)}
-        action="file"
-        currentUsage={user?.usage?.monthlyFiles || 0}
-        limit={1}
-      />
     </div>
   );
 }
