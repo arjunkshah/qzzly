@@ -72,6 +72,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     });
 
     if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      console.error('OpenAI API error response:', errorText);
       throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
     }
 
