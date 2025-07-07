@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Always use relative /.netlify/functions for Netlify deployment
-const BACKEND_URL = '/.netlify/functions';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://qzzly-backend-hpdutnhpwa-uc.a.run.app';
 
 /**
  * Extract text from PDF using OpenAI API via backend
