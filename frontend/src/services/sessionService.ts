@@ -20,7 +20,11 @@ export async function deleteSession(id: string): Promise<void> {
 }
 
 // Study-related helpers — stubs only -------------------------------------------------
-export async function addChatMessage(sessionId: string, message: string) {
+export async function getChatMessages(sessionId: string) {
+  return [] as any[];
+}
+
+export async function addChatMessage(sessionId: string, message: any) {
   return;
 }
 
