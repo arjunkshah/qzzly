@@ -6,8 +6,8 @@ from PyPDF2 import PdfReader
 import openai
 import tempfile
 
-# Set your OpenAI API key
-openai.api_key = "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"
+# Set your OpenAI API key from environment variable
+openai.api_key = os.environ.get("OPENAI_API_KEY", "")
 
 app = FastAPI()
 
@@ -28,6 +28,10 @@ def extract_text_from_pdf(file: UploadFile) -> str:
     text = "\n".join(page.extract_text() or "" for page in reader.pages)
     os.remove(tmp_path)
     return text
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 @app.post("/api/upload")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -103,3 +107,8 @@ async def generate_notes(text: str = Form(...)):
     )
     notes = await openai_chat(system_prompt, text, max_tokens=1500)
     return {"notes": notes}
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
