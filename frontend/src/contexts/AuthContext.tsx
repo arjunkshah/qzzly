@@ -11,7 +11,7 @@ import {
   logoutUser, 
   getCurrentUser 
 } from '@/services/authService';
-import { supabase } from '@/services/supabaseClient';
+import { supabase } from '../../../third-party/supabase/supabaseClient';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
