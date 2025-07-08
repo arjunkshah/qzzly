@@ -34,9 +34,9 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
   }, [activeSetId]);
 
   const handleCreateSet = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
+      setIsLoading(true);
+      setError(null);
+      try {
       // Generate flashcards using Gemini
       const generated = await generateFlashcards([], settings.count, settings.difficulty, settings.topic);
       const newSet: FlashcardSet = {
@@ -50,12 +50,12 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
       setActiveSetId(newSet.id);
       setShowCreateDialog(false);
       setNewSetName('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate flashcards');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to generate flashcards');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
   const activeSet = flashcardSets.find(set => set.id === activeSetId) || null;
 
@@ -177,10 +177,10 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
         <div className="w-full flex justify-center">
           <div className="bg-white rounded-3xl shadow-2xl p-12 w-full max-w-2xl min-h-[320px] flex flex-col justify-center items-center border border-gray-200 transition-all duration-300">
             <div className="text-3xl font-extrabold mb-6 text-gray-900">{currentCard.front}</div>
-            {showAnswer && (
+              {showAnswer && (
               <div className="text-2xl text-gray-700 border-t pt-8 mt-8 w-full text-center">{currentCard.back}</div>
-            )}
-          </div>
+              )}
+            </div>
         </div>
         <div className="flex flex-wrap justify-center gap-6 mt-10">
           <Button onClick={prevCard} disabled={currentIndex === 0} className="min-w-[140px] py-3 text-lg">Previous</Button>

@@ -49,7 +49,7 @@ const ChatView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
         content: aiResponse.text,
         timestamp: new Date().toISOString()
       };
-      setMessages(prev => [...prev, response]);
+        setMessages(prev => [...prev, response]);
     } catch (error: any) {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -87,20 +87,20 @@ const ChatView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
             >
               <div className={`rounded-2xl px-6 py-4 max-w-[70%] ${message.role === 'user' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white self-end' : 'bg-gray-100 text-gray-900 self-start'} shadow-md`}>
                 <div className="text-base whitespace-pre-line">
-                  <MarkdownRenderer content={message.content} />
-                </div>
+                    <MarkdownRenderer content={message.content} />
+                  </div>
                 {/* Remove timestamp rendering */}
-              </div>
+                  </div>
             </div>
           ))}
           {isLoading && (
             <div className="flex justify-start w-full">
               <div className="rounded-2xl px-6 py-4 max-w-[70%] bg-gray-100 text-gray-900 shadow-md">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
               </div>
             </div>
           )}

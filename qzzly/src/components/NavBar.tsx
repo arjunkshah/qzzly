@@ -31,9 +31,7 @@ export const NavBar = () => {
             <Link to="/sessions" className="text-gray-600 hover:text-purple-600 transition font-medium text-sm">My Sessions</Link>
           </nav>
           <div className="flex items-center space-x-4">
-            {user && (user as any).isGuest ? (
-              <span className="text-xs text-purple-600 font-semibold ml-4">Test Mode (Guest)</span>
-            ) : (
+            {!user ? (
               <>
                 <LoginDialog>
                   <Button variant="outline" className="hidden md:flex border-purple-300 text-purple-600 hover:bg-purple-50 font-medium">
@@ -46,6 +44,8 @@ export const NavBar = () => {
                   </Button>
                 </SignupDialog>
               </>
+            ) : (
+              <UserMenu />
             )}
           </div>
         </div>

@@ -25,15 +25,11 @@ const CTASection = () => {
               Join thousands of students who are studying smarter, not harder. Try Qzzly today and see the difference.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-5">
-              {user && (user as any).isGuest ? (
-                <span className="text-xs text-purple-600 font-semibold">Test Mode (Guest)</span>
-              ) : (
-                <SignupDialog redirectPath="/sessions">
-                  <Button size="lg" className="bg-white text-purple-600 hover:bg-purple-50 px-10 py-7 text-lg font-bold rounded-xl">
-                    Get Started Free
-                  </Button>
-                </SignupDialog>
-              )}
+              <SignupDialog redirectPath="/sessions">
+                <Button size="lg" className="bg-white text-purple-600 hover:bg-purple-50 px-10 py-7 text-lg font-bold rounded-xl">
+                  Get Started Free
+                </Button>
+              </SignupDialog>
               <Button size="lg" variant="outline" className="bg-transparent text-white border-2 border-white px-10 py-7 hover:bg-white/10 text-lg font-bold rounded-xl">
                 <Play className="w-5 h-5 mr-2" /> Watch Demo
               </Button>

@@ -327,16 +327,16 @@ export function LearnComponent({ sessionId, flashcards = [], studyMaterials = []
           <div className="max-w-2xl mx-auto">
             <h2 className="text-2xl font-semibold mb-4">Ask a Long-Form Question</h2>
             <div className="mb-4">
-              <Label htmlFor="question">Your Question</Label>
-              <Textarea
-                id="question"
-                value={question}
+                  <Label htmlFor="question">Your Question</Label>
+                  <Textarea
+                    id="question"
+                    value={question}
                 onChange={e => setQuestion(e.target.value)}
                 placeholder="Type your question about the study materials..."
                 rows={3}
                 className="mt-2"
-              />
-            </div>
+                  />
+                </div>
             <div className="mb-4">
               <Label htmlFor="complexity">Answer Complexity</Label>
               <Select value={answerComplexity} onValueChange={setAnswerComplexity}>
@@ -349,17 +349,17 @@ export function LearnComponent({ sessionId, flashcards = [], studyMaterials = []
                   <SelectItem value="hard">Hard</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+                    </div>
             <Button onClick={generateAnswer} disabled={!question.trim() || isGeneratingAnswer} className="mb-4">
               {isGeneratingAnswer ? 'Generating...' : 'Generate Long Answer'}
-            </Button>
+                </Button>
             {longAnswer && (
               <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
                 <h3 className="font-bold mb-2">Answer</h3>
                 <div className="whitespace-pre-line text-gray-800">{longAnswer}</div>
               </div>
             )}
-          </div>
+                </div>
         </TabsContent>
         
         <TabsContent value="material">

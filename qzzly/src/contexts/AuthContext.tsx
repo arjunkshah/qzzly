@@ -4,7 +4,7 @@ import { SessionService } from '@/services/sessionService';
 
 interface AuthContextType {
   user: AuthUser | null;
-  loading: boolean;
+  isLoading: boolean;
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check for existing session
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error checking user:', error);
         setUser(null);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = AuthService.onAuthStateChange((user) => {
       setUser(user);
-      setLoading(false);
+    setIsLoading(false);
     });
 
     return () => {
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     user,
-    loading,
+    isLoading,
     isAuthenticated: !!user,
     signIn,
     signUp,
