@@ -4,6 +4,7 @@ import { AuthService, AuthUser } from '@/services/authService';
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
+  isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
@@ -105,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     user,
     loading,
+    isAuthenticated: !!user,
     signIn,
     signUp,
     signInWithGoogle,
