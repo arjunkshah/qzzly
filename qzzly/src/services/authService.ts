@@ -72,10 +72,12 @@ export class AuthService {
 
   static async signInWithGoogle(): Promise<{ user: AuthUser | null; error: string | null }> {
     try {
+      // Always use a full URL for redirectTo
+      const redirectTo = window.location.origin + '/sessions';
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/sessions`
+          redirectTo
         }
       })
 

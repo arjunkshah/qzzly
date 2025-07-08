@@ -1,10 +1,6 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -13,23 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
 
 interface LoginDialogProps {
   children?: React.ReactNode;
@@ -37,47 +17,19 @@ interface LoginDialogProps {
 
 export function LoginDialog({ children }: LoginDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { signIn, signInWithGoogle, loading } = useAuth();
+  const { signInWithGoogle, loading } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
-  
-  const form = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  const onSubmit = async (data: LoginFormData) => {
-    const result = await signIn(data.email, data.password);
-    if (result.success) {
-      toast({
-        title: "Login successful!",
-        description: "Welcome back to Qzzly",
-      });
-      setIsOpen(false);
-      navigate("/sessions");
-    } else {
-      toast({
-        title: "Login failed",
-        description: result.error || "Please check your email and password",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     const result = await signInWithGoogle();
     if (result.success) {
       toast({
-        title: "Signing in with Google...",
+        title: "Logging in with Google...",
         description: "You will be redirected shortly",
       });
-      // The redirect will be handled by Supabase OAuth
     } else {
       toast({
-        title: "Google sign-in failed",
+        title: "Google login failed",
         description: result.error || "Please try again",
         variant: "destructive",
       });
@@ -93,56 +45,18 @@ export function LoginDialog({ children }: LoginDialogProps) {
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Log in to Qzzly</DialogTitle>
           <DialogDescription>
-            Enter your email and password to access your account.
+            Log in with Google to access your account. Email/password login is not supported.
           </DialogDescription>
         </DialogHeader>
-        
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="you@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="******" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end pt-2">
-              <Button type="submit" className="gradient-bg" disabled={loading}>
-                {loading ? 'Logging in...' : 'Log in'}
-              </Button>
-            </div>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full mt-2" 
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-            >
-              Continue with Google
-            </Button>
-          </form>
-        </Form>
+        <Button 
+          type="button" 
+          variant="outline" 
+          className="w-full mt-2" 
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+        >
+          Continue with Google
+        </Button>
       </DialogContent>
     </Dialog>
   );
