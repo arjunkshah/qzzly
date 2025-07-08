@@ -38,16 +38,23 @@ export default function StudySession() {
       if (result.error || !result.session) {
         throw new Error(result.error || "Session not found");
       }
-      // Transform Session to StudySession
+      // Fetch files, flashcards, quizzes, chat
+      const [filesRes, flashcardsRes, quizzesRes, chatRes] = await Promise.all([
+        SessionService.getFiles(result.session.id),
+        SessionService.getFlashcards(result.session.id),
+        SessionService.getQuizzes ? SessionService.getQuizzes(result.session.id) : Promise.resolve([]),
+        SessionService.getChatMessages ? SessionService.getChatMessages(result.session.id) : Promise.resolve([]),
+      ]);
       return {
         id: result.session.id,
         title: result.session.title,
         description: result.session.description || "",
         createdat: result.session.created_at,
         updatedat: result.session.updated_at,
-        files: [],
-        flashcardSets: [],
-        quizzes: [],
+        files: filesRes.files || [],
+        flashcardSets: flashcardsRes || [],
+        quizzes: quizzesRes || [],
+        chatMessages: chatRes || [],
         studyMaterials: []
       };
     },
@@ -194,11 +201,11 @@ export default function StudySession() {
                 sessionId={session.id} 
                 quizzes={session.quizzes}
                 files={session.files}
-                flashcards={session.flashcards}
+                flashcards={session.flashcardSets.flatMap(set => set.flashcards)}
                 onQuizAdded={(quiz) => {
                   setSession({
                     ...session,
-                    quizzes: [...session.quizzes, { ...quiz, id: `quiz_${Date.now()}`}]
+                    quizzes: [...session.quizzes, quiz]
                   });
                 }}
               />
@@ -207,7 +214,7 @@ export default function StudySession() {
             <TabsContent value="learn">
               <LearnComponent 
                 sessionId={session.id}
-                flashcards={session.flashcards}
+                flashcards={session.flashcardSets.flatMap(set => set.flashcards)}
                 studyMaterials={session.studyMaterials || []}
                 files={session.files}
               />
@@ -221,6 +228,8 @@ export default function StudySession() {
                   type: f.type,
                   content: f.content || ''
                 }))}
+                chatMessages={session.chatMessages}
+                sessionId={session.id}
               />
             </TabsContent>
           </div>

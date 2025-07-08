@@ -105,10 +105,19 @@ export function QuizComponent({
         return;
       }
       // Pass options to Gemini
-      const quizQuestions = await generateQuiz(files, quizSettings.questionCount, quizSettings.difficulty, quizSettings.topic);
+      const quizQuestions = await generateQuiz(
+        files.map(f => ({
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          content: f.content || ''
+        })),
+        quizSettings.questionCount,
+        quizSettings.difficulty,
+        quizSettings.topic
+      );
       const limitedQuestions = quizQuestions.slice(0, quizSettings.questionCount);
-      const newQuiz: Quiz = {
-        id: `quiz_${Date.now()}`,
+      const newQuiz = {
         title: quizSettings.topic || (files[0]?.name.replace('.pdf', '') || 'Quiz'),
         questions: limitedQuestions.map((q, index) => ({
           id: `q_${Date.now()}_${index}`,
@@ -118,7 +127,9 @@ export function QuizComponent({
           explanation: '',
         })),
       };
-      onQuizAdded(newQuiz);
+      // Save quiz to Supabase
+      const savedQuiz = await SessionService.addQuiz(sessionId, newQuiz);
+      onQuizAdded(savedQuiz);
       toast({
         title: "Success",
         description: "New quiz generated successfully"

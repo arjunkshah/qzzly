@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Slider } from '../ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
+import { SessionService } from '../../services/sessionService';
+import { supabase } from '@/lib/supabase';
 
 interface FlashcardsViewProps {
   flashcardSets: FlashcardSet[];
@@ -40,12 +42,37 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
       try {
       // Generate flashcards using Gemini with actual files
       const generated = await generateFlashcards(files, settings.count, settings.difficulty, settings.topic);
+      // Save the set to Supabase
+      const setName = newSetName || `Set ${flashcardSets.length + 1}`;
+      const { data: savedSet, error: setError } = await supabase
+        .from('flashcard_sets')
+        .insert({
+          session_id: files[0]?.session_id, // assumes all files are for this session
+          name: setName,
+          created_at: new Date().toISOString(),
+          settings: settings,
+        })
+        .select()
+        .single();
+      if (setError) throw new Error(setError.message);
+      // Save flashcards to Supabase
+      const flashcardsToSave = generated.map((fc: any) => ({
+        set_id: savedSet.id,
+        front: fc.front,
+        back: fc.back,
+        mastered: fc.mastered || false,
+      }));
+      const { data: savedFlashcards, error: fcError } = await supabase
+        .from('flashcards')
+        .insert(flashcardsToSave)
+        .select();
+      if (fcError) throw new Error(fcError.message);
       const newSet: FlashcardSet = {
-        id: `set_${Date.now()}`,
-        name: newSetName || `Set ${flashcardSets.length + 1}`,
-        createdAt: new Date().toISOString(),
+        id: savedSet.id,
+        name: setName,
+        createdAt: savedSet.created_at,
         settings: { ...settings },
-        flashcards: generated,
+        flashcards: savedFlashcards,
       };
       onCreateSet(newSet);
       setActiveSetId(newSet.id);

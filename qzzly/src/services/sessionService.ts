@@ -289,4 +289,90 @@ export class SessionService {
     if (error) throw new Error(error.message);
     return data;
   }
+
+  static async addQuiz(sessionId: string, quiz: { title: string; questions: any[] }): Promise<any> {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .insert({
+        session_id: sessionId,
+        title: quiz.title,
+        questions: quiz.questions,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async getQuizzes(sessionId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('id', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async addChatMessage(sessionId: string, message: { role: string; content: string; timestamp: string }): Promise<any> {
+    const { data, error } = await supabase
+      .from('chat')
+      .insert({
+        session_id: sessionId,
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async getChatMessages(sessionId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('chat')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('timestamp', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  static async getFlashcards(sessionId: string): Promise<any[]> {
+    // Fetch all flashcard sets for the session
+    const { data: sets, error: setError } = await supabase
+      .from('flashcard_sets')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+    if (setError) throw new Error(setError.message);
+    if (!sets || sets.length === 0) return [];
+    // Fetch flashcards for each set
+    const setIds = sets.map((s: any) => s.id);
+    const { data: flashcards, error: fcError } = await supabase
+      .from('flashcards')
+      .select('*')
+      .in('set_id', setIds);
+    if (fcError) throw new Error(fcError.message);
+    // Group flashcards by set_id
+    const flashcardsBySet: Record<string, any[]> = {};
+    for (const fc of flashcards || []) {
+      if (!flashcardsBySet[fc.set_id]) flashcardsBySet[fc.set_id] = [];
+      flashcardsBySet[fc.set_id].push({
+        id: fc.id,
+        front: fc.front,
+        back: fc.back,
+        mastered: fc.mastered,
+      });
+    }
+    // Build FlashcardSet objects
+    return sets.map((set: any) => ({
+      id: set.id,
+      name: set.name,
+      createdAt: set.created_at,
+      settings: set.settings,
+      flashcards: flashcardsBySet[set.id] || [],
+    }));
+  }
 } 

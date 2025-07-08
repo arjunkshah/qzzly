@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { processFiles } from "@/utils/fileProcessor";
 import { generateSummary, generateFlashcards, generateQuiz } from "@/services/geminiService";
 import { FileItem } from "@/types/session";
+import { SessionService } from "@/services/sessionService";
 
 interface FilesComponentProps {
   sessionId: string;
@@ -36,12 +37,21 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
       const processedFiles = await processFiles(fileList);
       
       for (const file of processedFiles) {
-        onFileAdded(file);
-        // No auto-generation of AI content here
-        toast({
-          title: "File uploaded",
-          description: `${file.name} was uploaded successfully.`,
-        });
+        // Save to Supabase first
+        const { file: savedFile, error } = await SessionService.addFile(sessionId, file);
+        if (error) {
+          toast({
+            title: "Upload failed",
+            description: error,
+            variant: "destructive",
+          });
+        } else {
+          onFileAdded(savedFile);
+          toast({
+            title: "File uploaded",
+            description: `${file.name} was uploaded successfully.`,
+          });
+        }
       }
     } catch (error) {
       console.error("Error uploading files:", error);
