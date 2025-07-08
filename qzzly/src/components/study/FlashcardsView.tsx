@@ -4,6 +4,10 @@ import ViewContainer from '../ui/ViewContainer';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { generateFlashcards } from '../../services/geminiService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
+import { Slider } from '../ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Input } from '../ui/input';
 
 const FlashcardsView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -11,12 +15,19 @@ const FlashcardsView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
   const [showAnswer, setShowAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [flashcardSettings, setFlashcardSettings] = useState({
+    count: 15,
+    difficulty: 'medium',
+    topic: '',
+  });
 
   const handleGenerateFlashcards = async () => {
     setIsLoading(true);
     setError(null);
+    setSettingsOpen(false);
     try {
-      const generated = await generateFlashcards(files);
+      const generated = await generateFlashcards(files, flashcardSettings.count, flashcardSettings.difficulty, flashcardSettings.topic);
       setFlashcards(generated);
       setCurrentIndex(0);
       setShowAnswer(false);
@@ -70,11 +81,64 @@ const FlashcardsView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
       <ViewContainer title="Flashcards" isLoading={false} error={null}>
       <div className="flex flex-col items-center space-y-6">
         <div className="text-center text-gray-500 mb-4">No flashcards available yet.</div>
-        <Button onClick={handleGenerateFlashcards} className="px-6 py-3 text-lg rounded-lg shadow-md bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 transition">Generate Flashcards</Button>
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogTrigger asChild>
+            <Button className="px-6 py-3 text-lg rounded-lg shadow-md bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 transition">Generate Flashcards</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Flashcard Generation Settings</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="font-medium">Number of flashcards</label>
+                <div className="flex items-center space-x-2">
+                  <Slider 
+                    value={[flashcardSettings.count]} 
+                    min={5} 
+                    max={30} 
+                    step={1}
+                    onValueChange={(vals) => setFlashcardSettings({...flashcardSettings, count: vals[0]})}
+                    className="flex-grow"
+                  />
+                  <span className="w-8 text-center font-medium">{flashcardSettings.count}</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="font-medium">Difficulty level</label>
+                <Select 
+                  value={flashcardSettings.difficulty}
+                  onValueChange={(value) => setFlashcardSettings({...flashcardSettings, difficulty: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="font-medium">Specific Topic (optional)</label>
+                <Input
+                  id="topic"
+                  placeholder="Leave blank to generate from uploaded files"
+                  value={flashcardSettings.topic}
+                  onChange={(e) => setFlashcardSettings({...flashcardSettings, topic: e.target.value})}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleGenerateFlashcards} className="w-full py-3 text-lg">Generate</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-      </ViewContainer>
-    );
-  }
+    </ViewContainer>
+  );
+}
 
   const currentCard = flashcards[currentIndex];
 

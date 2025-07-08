@@ -108,11 +108,34 @@ export const generateOutline = async (files: StudyFile[]): Promise<string> => {
     return response.text;
 }
 
-export const generateFlashcards = async (files: StudyFile[]): Promise<Flashcard[]> => {
-    const prompt = `Based on the following document(s), generate 15-20 key terms and their definitions for a set of flashcards. The output must be a valid JSON array of objects, where each object has a "term" and a "definition" key. Do not include any text outside of the JSON array.`;
-    const response = await generateContentWithFiles(files, prompt, true);
-    const parsed = parseJsonResponse<Flashcard[]>(response.text);
-    return parsed || [];
+// Add this type for Gemini's raw flashcard output
+interface GeminiRawFlashcard {
+  term?: string;
+  definition?: string;
+  front?: string;
+  back?: string;
+}
+
+export const generateFlashcards = async (
+  files: StudyFile[],
+  count: number = 15,
+  difficulty: string = 'medium',
+  topic: string = ''
+): Promise<Flashcard[]> => {
+  let prompt = `Based on the following document(s), generate ${count} key terms and their definitions for a set of flashcards.`;
+  if (topic && topic.trim()) {
+    prompt += ` Focus on the topic: ${topic}.`;
+  }
+  prompt += ` The flashcards should be at a ${difficulty} difficulty level. The output must be a valid JSON array of objects, where each object has a "term" and a "definition" key. Do not include any text outside of the JSON array.`;
+  const response = await generateContentWithFiles(files, prompt, true);
+  const parsed = parseJsonResponse<GeminiRawFlashcard[]>(response.text);
+  // Map Gemini's {term, definition} to Flashcard {id, front, back, mastered}
+  return (parsed || []).map((card, idx) => ({
+    id: `fc_${Date.now()}_${idx}`,
+    front: (card.term || card.front || ''),
+    back: (card.definition || card.back || ''),
+    mastered: false,
+  }));
 };
 
 export const generateQuiz = async (files: StudyFile[]): Promise<QuizQuestion[]> => {
