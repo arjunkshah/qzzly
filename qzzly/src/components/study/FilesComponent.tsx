@@ -57,24 +57,11 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
           });
         } catch (error) {
           console.error("Error generating AI content:", error);
-          
-          // Check if it's an API key error
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          const isApiKeyError = errorMessage.includes('API key') || errorMessage.includes('VITE_GEMINI_API_KEY');
-          
-          if (isApiKeyError) {
-            toast({
-              title: "File uploaded successfully",
-              description: `${file.name} was uploaded. To enable AI features, please set your VITE_GEMINI_API_KEY environment variable.`,
-              variant: "default",
-            });
-          } else {
-            toast({
-              title: "File uploaded",
-              description: `${file.name} was uploaded successfully, but AI processing failed.`,
-              variant: "destructive",
-            });
-          }
+          toast({
+            title: "File uploaded",
+            description: `${file.name} was uploaded successfully, but AI processing failed.`,
+            variant: "destructive",
+          });
         }
       }
     } catch (error) {
