@@ -114,7 +114,7 @@ export async function getSubscriptionStatus(userId: string) {
     const subscription = subscriptions.data[0];
     return {
       status: subscription.status,
-      plan: getPlanFromPriceId(subscription.items.data[0]?.price.id),
+      plan: 'pro', // Only pro plan exists
       currentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
       stripeCustomerId: customerWithMetadata.id,
       stripeSubscriptionId: subscription.id,
@@ -123,16 +123,6 @@ export async function getSubscriptionStatus(userId: string) {
     console.error('Error getting subscription status:', error);
     throw error;
   }
-}
-
-function getPlanFromPriceId(priceId: string): 'free' | 'pro' | 'premium' {
-  const planMap: Record<string, 'free' | 'pro' | 'premium'> = {
-    'price_pro_monthly': 'pro',
-    'price_pro_yearly': 'pro',
-    'price_premium_monthly': 'premium',
-    'price_premium_yearly': 'premium',
-  };
-  return planMap[priceId] || 'free';
 }
 
 export async function handleWebhook(event: Stripe.Event) {

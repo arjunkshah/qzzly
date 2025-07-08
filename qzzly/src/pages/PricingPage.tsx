@@ -11,12 +11,12 @@ const PRICING_PLANS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    description: 'Perfect for getting started',
+    description: 'Perfect for trying out Quiz.io',
     features: [
-      '3 study sessions per month',
-      'Basic AI summaries',
-      'PDF upload (up to 5MB)',
-      'Community support',
+      '1 study session per month',
+      'All AI features within session',
+      'PDF upload (up to 10MB)',
+      'Basic support',
     ],
     priceId: null,
     popular: false,
@@ -29,31 +29,14 @@ const PRICING_PLANS = [
     description: 'For serious students',
     features: [
       'Unlimited study sessions',
-      'Advanced AI features',
-      'PDF upload (up to 50MB)',
+      'All AI features',
+      'Unlimited PDF uploads',
       'Priority support',
       'Export to PDF/Word',
-      'Custom study plans',
+      'Advanced analytics',
     ],
     priceId: 'price_pro_monthly',
     popular: true,
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    price: '$19.99',
-    period: 'per month',
-    description: 'For power users',
-    features: [
-      'Everything in Pro',
-      'Unlimited file uploads',
-      'Advanced analytics',
-      'Priority AI processing',
-      'Custom integrations',
-      'Dedicated support',
-    ],
-    priceId: 'price_premium_monthly',
-    popular: false,
   },
 ];
 
@@ -95,11 +78,11 @@ export default function PricingPage() {
             Choose Your Plan
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Start with our free plan and upgrade as you grow. All plans include our core AI-powered study features.
+            Start with our free plan and upgrade when you need more sessions.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {PRICING_PLANS.map((plan) => (
             <Card
               key={plan.id}

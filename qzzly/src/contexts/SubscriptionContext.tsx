@@ -4,7 +4,7 @@ import { StripeService, SubscriptionStatus } from '../services/stripeService';
 interface Subscription {
   id: string;
   status: 'active' | 'canceled' | 'past_due' | 'unpaid';
-  plan: 'free' | 'pro' | 'premium';
+  plan: 'free' | 'pro';
   currentPeriodEnd: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;

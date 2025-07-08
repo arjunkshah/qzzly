@@ -13,7 +13,7 @@ export interface CreatePortalSessionData {
 export interface SubscriptionStatus {
   id: string;
   status: 'active' | 'canceled' | 'past_due' | 'unpaid';
-  plan: 'free' | 'pro' | 'premium';
+  plan: 'free' | 'pro';
   currentPeriodEnd: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
@@ -167,7 +167,7 @@ export class StripeService {
         user_id: session.customer,
         stripe_customer_id: session.customer,
         stripe_subscription_id: session.subscription,
-        plan: this.getPlanFromPriceId(session.line_items?.data?.[0]?.price?.id),
+        plan: 'pro',
         status: 'active',
         current_period_start: new Date(session.subscription_data?.subscription?.current_period_start * 1000).toISOString(),
         current_period_end: new Date(session.subscription_data?.subscription?.current_period_end * 1000).toISOString(),
@@ -207,16 +207,5 @@ export class StripeService {
       console.error('Error updating subscription:', error);
       throw error;
     }
-  }
-
-  private static getPlanFromPriceId(priceId: string): 'free' | 'pro' | 'premium' {
-    // Map your Stripe price IDs to plans
-    const planMap: Record<string, 'free' | 'pro' | 'premium'> = {
-      'price_pro_monthly': 'pro',
-      'price_pro_yearly': 'pro',
-      'price_premium_monthly': 'premium',
-      'price_premium_yearly': 'premium',
-    };
-    return planMap[priceId] || 'free';
   }
 } 
