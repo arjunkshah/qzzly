@@ -50,11 +50,11 @@ const ChatView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, response]);
-    } catch (error) {
+    } catch (error: any) {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error while processing your request. Please try again.',
+        content: error?.message || 'Sorry, I encountered an error while processing your request. Please try again.',
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);

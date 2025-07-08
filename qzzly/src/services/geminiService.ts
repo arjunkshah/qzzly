@@ -178,17 +178,27 @@ export const generateLongAnswer = async (
   return response.text;
 };
 
-export const createChat = (files: StudyFile[]): Chat => {
-    let systemInstruction = `You are a helpful study assistant. The user has provided document(s) for context. Your task is to answer the user's questions based *only* on the information contained within these documents. Do not use external knowledge. If the answer is not in the documents, say so. After providing a comprehensive answer, add a "DEEP DIVE" section with 3 thought-provoking follow-up questions formatted as a markdown list.`;
+export const createChat = (files: StudyFile[]): any => {
+  // Prepare a context string from all files, limit to 10,000 characters
+  let context = files
+    .map(f => `--- Content from ${f.name} (${f.type}) ---\n${(f.content || '').slice(0, 2000)}`)
+    .join('\n\n');
+  if (context.length > 10000) context = context.slice(0, 10000) + '\n...';
 
-    // Include all file types (PDFs and images)
-    const textContent = files
-      .map(f => `\n\n--- Content from ${f.name} (${f.type}) ---\n${f.content}`)
-      .join('');
-    systemInstruction += textContent;
-
-    return ai.chats.create({
-        model,
-        config: { systemInstruction },
-    });
+  // Return a chat object with a sendMessage method that always includes the context
+  return {
+    async sendMessage(userMessage: string) {
+      try {
+        const prompt = `Context:\n${context}\n\nUser: ${userMessage}\n\nAssistant:`;
+        const response = await ai.models.generateContent({
+          model,
+          contents: [{ text: prompt }],
+        });
+        return { text: response.text };
+      } catch (err: any) {
+        console.error('Gemini chat error:', err);
+        throw new Error(err?.message || 'Gemini chat failed');
+      }
+    }
+  };
 }; 
