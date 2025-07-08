@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { generateLongAnswer } from '../../services/geminiService';
+import { generateLongAnswer, generateSummary, generateNotes, generateOutline } from '../../services/geminiService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SessionService } from '../../services/sessionService';
 
 interface LearnComponentProps {
   sessionId: string;
@@ -148,11 +149,50 @@ export function LearnComponent({ sessionId, flashcards = [], studyMaterials = []
   };
   
   const handleGenerateStudyMaterial = async () => {
+    setIsGenerating(true);
+    setStudyMaterialContent(null);
+    try {
+      // Generate content using Gemini (replace with actual generator for each format)
+      let generatedContent = '';
+      if (format === 'summary') {
+        generatedContent = await generateSummary(files.map(f => ({
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          content: f.content || ''
+        })));
+      } else if (format === 'notes') {
+        generatedContent = await generateNotes(files.map(f => ({
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          content: f.content || ''
+        })));
+      } else if (format === 'outline') {
+        generatedContent = await generateOutline(files.map(f => ({
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          content: f.content || ''
+        })));
+      }
+      // Save to Supabase
+      const { studyContent, error } = await SessionService.saveStudyContent(sessionId, format, generatedContent);
+      if (error) throw new Error(error);
+      setStudyMaterialContent(studyContent);
       toast({
-      title: "Not implemented",
-      description: "Study material generation is not available in this version.",
-        variant: "destructive",
+        title: 'Success',
+        description: `${format.charAt(0).toUpperCase() + format.slice(1)} generated and saved!`,
       });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to generate study material.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
   
   const generateAnswer = async () => {

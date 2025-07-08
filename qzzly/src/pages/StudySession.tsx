@@ -38,13 +38,17 @@ export default function StudySession() {
       if (result.error || !result.session) {
         throw new Error(result.error || "Session not found");
       }
-      // Fetch files, flashcards, quizzes, chat
-      const [filesRes, flashcardsRes, quizzesRes, chatRes] = await Promise.all([
+      // Fetch files, flashcards, quizzes, chat, and study materials
+      const [filesRes, flashcardsRes, quizzesRes, chatRes, summaryRes, notesRes, outlineRes] = await Promise.all([
         SessionService.getFiles(result.session.id),
         SessionService.getFlashcards(result.session.id),
         SessionService.getQuizzes ? SessionService.getQuizzes(result.session.id) : Promise.resolve([]),
         SessionService.getChatMessages ? SessionService.getChatMessages(result.session.id) : Promise.resolve([]),
+        SessionService.getStudyContent(result.session.id, 'summary'),
+        SessionService.getStudyContent(result.session.id, 'notes'),
+        SessionService.getStudyContent(result.session.id, 'outline'),
       ]);
+      const studyMaterials = [summaryRes.studyContent, notesRes.studyContent, outlineRes.studyContent].filter(Boolean);
       return {
         id: result.session.id,
         title: result.session.title,
@@ -55,7 +59,7 @@ export default function StudySession() {
         flashcardSets: flashcardsRes || [],
         quizzes: quizzesRes || [],
         chatMessages: chatRes || [],
-        studyMaterials: []
+        studyMaterials,
       };
     },
     enabled: !!id,
