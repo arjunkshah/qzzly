@@ -28,4 +28,12 @@ export const generateStudyMaterial = async (files: FileItem[]): Promise<string> 
 
 export const generateLongAnswer = async (files: FileItem[], question: string): Promise<string> => {
   return Promise.resolve(`This is a mock long answer for: ${question}`);
+};
+
+export const generateFlashcards = async (files: FileItem[]): Promise<{ front: string; back: string; mastered: boolean }[]> => {
+  // Return mock flashcards
+  return [
+    { front: 'Mock Term 1', back: 'Mock Definition 1', mastered: false },
+    { front: 'Mock Term 2', back: 'Mock Definition 2', mastered: false },
+  ];
 }; 
