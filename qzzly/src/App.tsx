@@ -10,7 +10,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import SessionsPage from "./pages/SessionsPage";
 import StudySession from "./pages/StudySession";
-import PricingPage from "./pages/PricingPage";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +23,6 @@ const App = () => (
           <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-              <Route path="/pricing" element={<PricingPage />} />
             <Route element={<ProtectedRoute redirectTo="/" />}> 
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/session/:id" element={<StudySession />} />

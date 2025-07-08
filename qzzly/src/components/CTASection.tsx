@@ -6,7 +6,7 @@ import { SignupDialog } from "@/components/auth/SignupDialog";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 const CTASection = () => {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const sectionRef = useScrollAnimation<HTMLElement>();
 
   return (
@@ -25,12 +25,8 @@ const CTASection = () => {
               Join thousands of students who are studying smarter, not harder. Try Qzzly today and see the difference.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-5">
-              {isAuthenticated ? (
-                <Button size="lg" className="bg-white text-purple-600 hover:bg-purple-50 px-10 py-7 text-lg font-bold rounded-xl" asChild>
-                  <Link to="/sessions">
-                    Go to Study Sessions
-                  </Link>
-                </Button>
+              {user && (user as any).isGuest ? (
+                <span className="text-xs text-purple-600 font-semibold">Test Mode (Guest)</span>
               ) : (
                 <SignupDialog redirectPath="/sessions">
                   <Button size="lg" className="bg-white text-purple-600 hover:bg-purple-50 px-10 py-7 text-lg font-bold rounded-xl">

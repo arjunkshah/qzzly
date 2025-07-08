@@ -42,7 +42,6 @@ const Footer = () => {
             <h3 className="text-lg font-bold mb-5">Product</h3>
             <ul className="space-y-3">
               <li><a href="#features" className="text-gray-400 hover:text-white transition-colors duration-300">Features</a></li>
-              <li><a href="#pricing" className="text-gray-400 hover:text-white transition-colors duration-300">Pricing</a></li>
               <li><a href="#" className="text-gray-400 hover:text-white transition-colors duration-300">Testimonials</a></li>
               <li><a href="#" className="text-gray-400 hover:text-white transition-colors duration-300">FAQ</a></li>
             </ul>

@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 export const NavBar = () => {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const headerRef = useScrollAnimation<HTMLElement>();
 
   return (
@@ -28,12 +28,11 @@ export const NavBar = () => {
           <nav className="hidden md:flex items-center space-x-10">
             <a href="/#features" className="text-gray-600 hover:text-purple-600 transition font-medium text-sm">Features</a>
             <a href="/#how-it-works" className="text-gray-600 hover:text-purple-600 transition font-medium text-sm">How it Works</a>
-            <a href="/#pricing" className="text-gray-600 hover:text-purple-600 transition font-medium text-sm">Pricing</a>
             <Link to="/sessions" className="text-gray-600 hover:text-purple-600 transition font-medium text-sm">My Sessions</Link>
           </nav>
           <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
-              <UserMenu />
+            {user && (user as any).isGuest ? (
+              <span className="text-xs text-purple-600 font-semibold ml-4">Test Mode (Guest)</span>
             ) : (
               <>
                 <LoginDialog>
