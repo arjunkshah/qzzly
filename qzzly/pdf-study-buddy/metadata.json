@@ -1,0 +1,8 @@
+{
+  "name": "PDF Study Buddy",
+  "description": "An AI-powered study assistant that takes your PDF documents and automatically generates flashcards, summaries, quizzes, notes, and outlines. You can also chat with the AI to get a deeper understanding of your study material.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}

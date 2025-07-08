@@ -1,12 +1,12 @@
-import { GoogleGenAI, GenerateContentResponse, Chat, Part } from "@google/genai";
-import { Flashcard, QuizQuestion, StudyFile } from '../types/session';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-if (!apiKey) {
-    throw new Error("VITE_GEMINI_API_KEY environment variable not set");
+import { GoogleGenAI, GenerateContentResponse, Chat, Part } from "@google/genai";
+import { Flashcard, QuizQuestion, StudyFile } from '../types';
+
+if (!process.env.API_KEY) {
+    throw new Error("API_KEY environment variable not set");
 }
 
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = 'gemini-2.5-flash-preview-04-17';
 
 const parseJsonResponse = <T,>(jsonString: string): T | null => {
@@ -107,6 +107,7 @@ export const generateConceptMap = async (files: StudyFile[]): Promise<string> =>
     return match ? match[1] : '';
 };
 
+
 export const createChat = (files: StudyFile[]): Chat => {
     let systemInstruction = `You are a helpful study assistant. The user has provided document(s) for context. Your task is to answer the user's questions based *only* on the information contained within these documents. Do not use external knowledge. If the answer is not in the documents, say so. After providing a comprehensive answer, add a "DEEP DIVE" section with 3 thought-provoking follow-up questions formatted as a markdown list.`;
 
@@ -124,4 +125,4 @@ export const createChat = (files: StudyFile[]): Chat => {
         model,
         config: { systemInstruction },
     });
-}; 
+};
