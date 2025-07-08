@@ -17,7 +17,7 @@ interface LoginDialogProps {
 
 export function LoginDialog({ children }: LoginDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { signInWithGoogle, loading } = useAuth();
+  const { signInWithGoogle, loading, setGuestUser } = useAuth();
   const { toast } = useToast();
 
   const handleGoogleSignIn = async () => {
@@ -34,6 +34,15 @@ export function LoginDialog({ children }: LoginDialogProps) {
         variant: "destructive",
       });
     }
+  };
+
+  const handleGuest = () => {
+    setGuestUser();
+    toast({
+      title: "Continuing as Guest",
+      description: "You are now in guest/test mode.",
+    });
+    setIsOpen(false);
   };
 
   return (
@@ -57,6 +66,16 @@ export function LoginDialog({ children }: LoginDialogProps) {
         >
           Continue with Google
         </Button>
+        <div className="text-center text-xs text-gray-400 my-2">or</div>
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full"
+          onClick={handleGuest}
+        >
+          Continue as Guest (Test Mode)
+        </Button>
+        <div className="text-xs text-gray-400 mt-2 text-center">Guest mode is for testing only. Your data will not be saved.</div>
       </DialogContent>
     </Dialog>
   );

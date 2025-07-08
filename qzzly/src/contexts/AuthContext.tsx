@@ -8,6 +8,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  setGuestUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,9 +85,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await AuthService.signOut();
+      setUser(null);
     } catch (error) {
       console.error('Error signing out:', error);
     }
+  };
+
+  const setGuestUser = () => {
+    setUser({
+      id: 'guest',
+      email: 'guest@qzzly.com',
+      created_at: new Date().toISOString(),
+      isGuest: true,
+      name: 'Guest User',
+    } as any);
   };
 
   const value = {
@@ -96,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signInWithGoogle,
     signOut,
+    setGuestUser,
   };
 
   return (
