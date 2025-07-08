@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/node_modules/pdfjs-dist/build/pdf.worker.min.js';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 import { FileItem } from '../types/session';
 
 const readFileAsBase64 = (file: File): Promise<string> => {

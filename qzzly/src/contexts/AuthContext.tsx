@@ -24,11 +24,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkUser = async () => {
       if ((user as any)?.isGuest) return;
       try {
-        const { user, error } = await AuthService.getCurrentUser();
+        const { user: foundUser, error } = await AuthService.getCurrentUser();
         if (error) {
           console.error('Auth error:', error);
         }
-        setUser(user);
+        if (!foundUser) {
+          // No session, set guest user
+          setUser({
+            id: 'guest',
+            email: 'guest@qzzly.com',
+            created_at: new Date().toISOString(),
+            isGuest: true,
+            name: 'Guest User',
+          } as any);
+        } else {
+          setUser(foundUser);
+        }
       } catch (error) {
         console.error('Error checking user:', error);
       } finally {
