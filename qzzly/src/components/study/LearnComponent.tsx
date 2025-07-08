@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Flashcard, StudyMaterial, FileItem } from "@/types/session";
 // TODO: Implement SessionService.toggleFlashcardMastery for marking flashcards as mastered
-import { generateStudyMaterial, generateLongAnswer } from "@/services/openaiService";
+import { generateStudyMaterial, generateLongAnswer } from "@/services/geminiService";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Check, X, ArrowLeft, ArrowRight, Lightbulb, BookText, MessageSquare, BrainCircuit } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
