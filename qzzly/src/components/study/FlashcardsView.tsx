@@ -13,9 +13,10 @@ interface FlashcardsViewProps {
   flashcardSets: FlashcardSet[];
   onCreateSet: (set: FlashcardSet) => void;
   onUpdateSet: (set: FlashcardSet) => void;
+  files: any[];
 }
 
-const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreateSet, onUpdateSet }) => {
+const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreateSet, onUpdateSet, files }) => {
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newSetName, setNewSetName] = useState('');
@@ -37,8 +38,8 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
       setIsLoading(true);
       setError(null);
       try {
-      // Generate flashcards using Gemini
-      const generated = await generateFlashcards([], settings.count, settings.difficulty, settings.topic);
+      // Generate flashcards using Gemini with actual files
+      const generated = await generateFlashcards(files, settings.count, settings.difficulty, settings.topic);
       const newSet: FlashcardSet = {
         id: `set_${Date.now()}`,
         name: newSetName || `Set ${flashcardSets.length + 1}`,

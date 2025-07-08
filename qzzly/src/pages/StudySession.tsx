@@ -173,6 +173,7 @@ export default function StudySession() {
             <TabsContent value="flashcards">
               <FlashcardsView 
                 flashcardSets={session.flashcardSets}
+                files={session.files}
                 onCreateSet={(newSet) => {
                   setSession({
                     ...session,
