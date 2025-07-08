@@ -11,15 +11,44 @@ const model = 'gemini-2.5-flash-preview-04-17';
 
 const parseJsonResponse = <T,>(jsonString: string): T | null => {
     let cleanJsonString = jsonString.trim();
-    const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+    const fenceRegex = /^```(json)?\s*\n?(.*?)\n?\s*```$/s;
     const match = cleanJsonString.match(fenceRegex);
     if (match && match[2]) {
         cleanJsonString = match[2].trim();
     }
 
+    // Attempt to fix common JSON issues
+    // Remove trailing commas
+    cleanJsonString = cleanJsonString.replace(/,\s*([}\]])/g, '$1');
+    // Remove any text before the first [ or {
+    const firstBracket = Math.min(
+      ...['[', '{'].map(b => cleanJsonString.indexOf(b)).filter(i => i !== -1)
+    );
+    if (firstBracket > 0) {
+      cleanJsonString = cleanJsonString.slice(firstBracket);
+    }
+    // Remove any text after the last ] or }
+    const lastArray = cleanJsonString.lastIndexOf(']');
+    const lastObj = cleanJsonString.lastIndexOf('}');
+    const lastBracket = Math.max(lastArray, lastObj);
+    if (lastBracket !== -1) {
+      cleanJsonString = cleanJsonString.slice(0, lastBracket + 1);
+    }
+
     try {
         return JSON.parse(cleanJsonString) as T;
     } catch (error) {
+        // Try to extract the first valid JSON array/object substring
+        const arrMatch = cleanJsonString.match(/\[.*\]/s);
+        const objMatch = cleanJsonString.match(/\{.*\}/s);
+        let fallback = arrMatch ? arrMatch[0] : objMatch ? objMatch[0] : null;
+        if (fallback) {
+            try {
+                return JSON.parse(fallback) as T;
+            } catch (e2) {
+                console.error("Failed fallback JSON parse:", e2);
+            }
+        }
         console.error("Failed to parse JSON response:", error);
         console.error("Original string:", jsonString);
         return null;

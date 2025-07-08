@@ -15,7 +15,6 @@ interface FilesComponentProps {
 export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponentProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [results, setResults] = useState<any>(null);
   const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -38,31 +37,11 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
       
       for (const file of processedFiles) {
         onFileAdded(file);
-        
-        // Generate AI content for the file
-        try {
-          const summary = await generateSummary([file]);
-          const flashcards = await generateFlashcards([file]);
-          const quiz = await generateQuiz([file]);
-          
-          setResults({
-            summary,
-            flashcards,
-            quiz
-          });
-          
-          toast({
-            title: "File processed successfully",
-            description: `Generated summary, ${flashcards.length} flashcards, and ${quiz.length} quiz questions for ${file.name}`,
-          });
-        } catch (error) {
-          console.error("Error generating AI content:", error);
-          toast({
-            title: "File uploaded",
-            description: `${file.name} was uploaded successfully, but AI processing failed.`,
-            variant: "destructive",
-          });
-        }
+        // No auto-generation of AI content here
+        toast({
+          title: "File uploaded",
+          description: `${file.name} was uploaded successfully.`,
+        });
       }
     } catch (error) {
       console.error("Error uploading files:", error);
@@ -143,44 +122,6 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
                 </span>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {results && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-4">Generated Content</h3>
-          <div className="space-y-4">
-            {results.summary && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <h4 className="font-medium mb-2">Summary</h4>
-                <p className="text-sm">{results.summary}</p>
-              </div>
-            )}
-            {results.flashcards && results.flashcards.length > 0 && (
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <h4 className="font-medium mb-2">Flashcards ({results.flashcards.length})</h4>
-                <div className="space-y-2">
-                  {results.flashcards.slice(0, 3).map((card: any, index: number) => (
-                    <div key={index} className="text-sm">
-                      <strong>{card.term}:</strong> {card.definition}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {results.quiz && results.quiz.length > 0 && (
-              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <h4 className="font-medium mb-2">Quiz Questions ({results.quiz.length})</h4>
-                <div className="space-y-2">
-                  {results.quiz.slice(0, 2).map((question: any, index: number) => (
-                    <div key={index} className="text-sm">
-                      <strong>Q{index + 1}:</strong> {question.question}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
