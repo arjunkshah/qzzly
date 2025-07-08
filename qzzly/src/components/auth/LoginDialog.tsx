@@ -64,8 +64,8 @@ export function LoginDialog({ children }: LoginDialogProps) {
           onClick={handleGoogleSignIn}
           disabled={loading}
         >
-          Continue with Google
-        </Button>
+              Continue with Google
+            </Button>
         <div className="text-center text-xs text-gray-400 my-2">or</div>
         <Button
           type="button"

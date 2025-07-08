@@ -119,7 +119,7 @@ export const createChat = (files: StudyFile[]): Chat => {
     
     // Note: The base `createChat` doesn't directly support images in system instructions in the same way `generateContent` does. 
     // For chat, we will pass images with each message.
-
+    
     return ai.chats.create({
         model,
         config: { systemInstruction },

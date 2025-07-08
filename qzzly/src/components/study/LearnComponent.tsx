@@ -142,19 +142,19 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
   };
   
   const handleGenerateStudyMaterial = async () => {
-    toast({
+      toast({
       title: "Not implemented",
       description: "Study material generation is not available in this version.",
-      variant: "destructive",
-    });
+        variant: "destructive",
+      });
   };
   
   const generateAnswer = async () => {
-    toast({
+      toast({
       title: "Not implemented",
       description: "Long answer generation is not available in this version.",
-      variant: "destructive",
-    });
+        variant: "destructive",
+      });
   };
 
   return (

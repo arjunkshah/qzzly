@@ -45,7 +45,7 @@ export class SessionService {
       };
       this.guestSessions.unshift(session);
       return { session, error: null };
-    }
+}
     try {
       const { data: session, error } = await supabase
         .from('sessions')
@@ -233,7 +233,7 @@ export class SessionService {
 
       if (error) {
         return { studyContent: null, error: error.message }
-      }
+}
 
       return { studyContent, error: null }
     } catch (error) {
