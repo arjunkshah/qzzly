@@ -21,7 +21,7 @@ interface LearnComponentProps {
   files?: FileItem[];
 }
 
-export function LearnComponent({ sessionId, flashcards, studyMaterials = [], files = [] }: LearnComponentProps) {
+export function LearnComponent({ sessionId, flashcards = [], studyMaterials = [], files = [] }: LearnComponentProps) {
   // Flashcard state
   const [currentCards, setCurrentCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -44,18 +44,22 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
   const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
   const [longAnswer, setLongAnswer] = useState("");
 
+  // Defensive: always use arrays
+  const safeFlashcards = Array.isArray(flashcards) ? flashcards : [];
+  const safeCurrentCards = Array.isArray(currentCards) ? currentCards : [];
+
   useEffect(() => {
     // Filter out mastered cards and shuffle the remaining ones
-    const unmasteredCards = flashcards.filter(card => !card.mastered);
+    const unmasteredCards = safeFlashcards.filter(card => !card.mastered);
     setCurrentCards(shuffleArray([...unmasteredCards]));
     setCurrentIndex(0);
     setIsFlipped(false);
     setRemainingCount(unmasteredCards.length);
-    setMasteredCount(flashcards.length - unmasteredCards.length);
+    setMasteredCount(safeFlashcards.length - unmasteredCards.length);
     
-    const totalCards = flashcards.length;
+    const totalCards = safeFlashcards.length;
     const masteredPercentage = totalCards > 0 
-      ? Math.round((flashcards.filter(card => card.mastered).length / totalCards) * 100) 
+      ? Math.round((safeFlashcards.filter(card => card.mastered).length / totalCards) * 100) 
       : 0;
     setProgress(masteredPercentage);
     
@@ -71,20 +75,20 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
   };
 
   const handleMarkMastered = async () => {
-    if (currentCards.length === 0) return;
+    if (safeCurrentCards.length === 0) return;
     
-    const currentCard = currentCards[currentIndex];
+    const currentCard = safeCurrentCards[currentIndex];
     try {
       // await SessionService.toggleFlashcardMastery(sessionId, currentCard.id);
       
       // Remove the card from current deck
-      const updatedCards = currentCards.filter(card => card.id !== currentCard.id);
+      const updatedCards = safeCurrentCards.filter(card => card.id !== currentCard.id);
       setCurrentCards(updatedCards);
       setRemainingCount(updatedCards.length);
       setMasteredCount(masteredCount + 1);
       
       // Update progress
-      const totalCards = flashcards.length;
+      const totalCards = safeFlashcards.length;
       const newMasteredPercentage = totalCards > 0 
         ? Math.round(((masteredCount + 1) / totalCards) * 100) 
         : 0;
@@ -108,10 +112,10 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
   };
 
   const handleKeepPracticing = () => {
-    if (currentCards.length === 0) return;
+    if (safeCurrentCards.length === 0) return;
     
     // Move current card to the end of the deck
-    const updatedCards = [...currentCards];
+    const updatedCards = [...safeCurrentCards];
     const currentCard = updatedCards.splice(currentIndex, 1)[0];
     updatedCards.push(currentCard);
     
@@ -124,17 +128,17 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
 
   const handleNextCard = () => {
     setIsFlipped(false);
-    setCurrentIndex((currentIndex + 1) % currentCards.length);
+    setCurrentIndex((currentIndex + 1) % safeCurrentCards.length);
   };
 
   const handlePrevCard = () => {
     setIsFlipped(false);
-    setCurrentIndex((currentIndex - 1 + currentCards.length) % currentCards.length);
+    setCurrentIndex((currentIndex - 1 + safeCurrentCards.length) % safeCurrentCards.length);
   };
 
   const handleRestartAllCards = () => {
     // Reset all cards to unmastered state
-    const allCards = shuffleArray([...flashcards]);
+    const allCards = shuffleArray([...safeFlashcards]);
     setCurrentCards(allCards);
     setCurrentIndex(0);
     setIsFlipped(false);
@@ -220,7 +224,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
             </div>
           </div>
           
-          {currentCards.length > 0 ? (
+          {safeCurrentCards.length > 0 ? (
             <div>
               <div className="flex justify-center mb-8">
                 <div 
@@ -234,7 +238,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
                         <span className="text-purple-600 font-semibold">{currentIndex + 1}</span>
                       </div>
                       <p className="text-center text-xl font-medium">
-                        {currentCards[currentIndex]?.front}
+                        {safeCurrentCards[currentIndex]?.front}
                       </p>
                       <p className="text-gray-400 text-sm mt-4">Click to flip</p>
                     </div>
@@ -242,7 +246,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
                     {/* Back of card */}
                     <div className="absolute w-full h-full bg-purple-50 rounded-xl p-8 border-2 border-purple-200 shadow-md backface-hidden rotate-y-180 flex flex-col items-center justify-center">
                       <p className="text-center text-lg">
-                        {currentCards[currentIndex]?.back}
+                        {safeCurrentCards[currentIndex]?.back}
                       </p>
                       <p className="text-gray-400 text-sm mt-4">Click to flip back</p>
                     </div>
@@ -254,7 +258,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
                 <Button 
                   variant="outline" 
                   onClick={handlePrevCard}
-                  disabled={currentCards.length <= 1}
+                  disabled={safeCurrentCards.length <= 1}
                   className="flex items-center"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -264,7 +268,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
                 <Button 
                   variant="outline" 
                   onClick={handleNextCard}
-                  disabled={currentCards.length <= 1}
+                  disabled={safeCurrentCards.length <= 1}
                   className="flex items-center"
                 >
                   Next
@@ -292,7 +296,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
                 </Button>
               </div>
             </div>
-          ) : flashcards.length === 0 ? (
+          ) : safeFlashcards.length === 0 ? (
             <div className="text-center py-16 border rounded-lg bg-gray-50">
               <BookOpen className="h-10 w-10 text-gray-400 mx-auto mb-3" />
               <h3 className="text-lg font-medium text-gray-900">No flashcards to learn</h3>

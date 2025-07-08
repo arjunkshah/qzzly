@@ -64,6 +64,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     SessionService.setCurrentUser(user);
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      setUser({
+        id: 'guest',
+        email: 'guest@qzzly.com',
+        created_at: new Date().toISOString(),
+        isGuest: true,
+        name: 'Guest User',
+      } as any);
+    }
+  }, [user]);
+
   const signIn = async (email: string, password: string) => {
     try {
       const { user, error } = await AuthService.signIn({ email, password });
