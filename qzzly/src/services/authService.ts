@@ -1,48 +1,119 @@
-// Simple localStorage-based auth for demo purposes
-// No external dependencies
+import { supabase } from '@/lib/supabase'
+import { User } from '@/lib/supabase'
 
-export interface LoginFormData { 
-  email: string; 
-  password: string 
+export interface AuthUser {
+  id: string
+  email: string
+  created_at: string
 }
 
-export interface SignupFormData extends LoginFormData { 
-  name: string 
+export interface SignUpData {
+  email: string
+  password: string
 }
 
-type User = {
-  id: string;
-  email: string;
-  name?: string;
-};
-
-export function getCurrentUser(): User | null {
-  const userData = localStorage.getItem('quiz_io_current_user');
-  return userData ? JSON.parse(userData) : null;
+export interface SignInData {
+  email: string
+  password: string
 }
 
-export async function loginUser(data: LoginFormData): Promise<boolean> {
-  // Mock login - always succeeds for demo
-  const user = {
-    id: `user_${Date.now()}`,
-    email: data.email,
-    name: data.email.split('@')[0]
-  };
-  localStorage.setItem('quiz_io_current_user', JSON.stringify(user));
-  return true;
-}
+export class AuthService {
+  static async signUp(data: SignUpData): Promise<{ user: AuthUser | null; error: string | null }> {
+    try {
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      })
 
-export async function signupUser(data: SignupFormData): Promise<boolean> {
-  // Mock signup - always succeeds for demo
-  const user = {
-    id: `user_${Date.now()}`,
-    email: data.email,
-    name: data.name
-  };
-  localStorage.setItem('quiz_io_current_user', JSON.stringify(user));
-  return true;
-}
+      if (error) {
+        return { user: null, error: error.message }
+      }
 
-export function logoutUser(): void {
-  localStorage.removeItem('quiz_io_current_user');
+      if (authData.user) {
+        const user: AuthUser = {
+          id: authData.user.id,
+          email: authData.user.email!,
+          created_at: authData.user.created_at,
+        }
+        return { user, error: null }
+      }
+
+      return { user: null, error: 'Sign up failed' }
+    } catch (error) {
+      return { user: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async signIn(data: SignInData): Promise<{ user: AuthUser | null; error: string | null }> {
+    try {
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+
+      if (error) {
+        return { user: null, error: error.message }
+      }
+
+      if (authData.user) {
+        const user: AuthUser = {
+          id: authData.user.id,
+          email: authData.user.email!,
+          created_at: authData.user.created_at,
+        }
+        return { user, error: null }
+      }
+
+      return { user: null, error: 'Sign in failed' }
+    } catch (error) {
+      return { user: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async signOut(): Promise<{ error: string | null }> {
+    try {
+      const { error } = await supabase.auth.signOut()
+      return { error: error?.message || null }
+    } catch (error) {
+      return { error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async getCurrentUser(): Promise<{ user: AuthUser | null; error: string | null }> {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+
+      if (error) {
+        return { user: null, error: error.message }
+      }
+
+      if (user) {
+        const authUser: AuthUser = {
+          id: user.id,
+          email: user.email!,
+          created_at: user.created_at,
+        }
+        return { user: authUser, error: null }
+      }
+
+      return { user: null, error: null }
+    } catch (error) {
+      return { user: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static onAuthStateChange(callback: (user: AuthUser | null) => void) {
+    return supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const user: AuthUser = {
+          id: session.user.id,
+          email: session.user.email!,
+          created_at: session.user.created_at,
+        }
+        callback(user)
+      } else if (event === 'SIGNED_OUT') {
+        callback(null)
+      }
+    })
+  }
 } 

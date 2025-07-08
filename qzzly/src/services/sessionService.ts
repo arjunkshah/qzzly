@@ -1,103 +1,205 @@
-// Frontend-only session service - no API calls
-// This service manages sessions using localStorage for demonstration
+import { supabase } from '@/lib/supabase'
+import { Session, FileItem, StudyContent } from '@/lib/supabase'
 
-import { StudySession, FileItem, Flashcard, Quiz } from '@/types/session';
-
-export async function getSessions(): Promise<StudySession[]> {
-  const sessions = localStorage.getItem('quiz_io_sessions');
-  if (!sessions) return [];
-  // Migrate any old sessions to StudySession format
-  const parsed = JSON.parse(sessions);
-  return parsed.map((s: any) => ({
-    id: s.id,
-    title: s.title || s.name || 'Untitled Session',
-    description: s.description || '',
-    createdat: s.createdat || s.createdAt || new Date().toISOString(),
-    updatedat: s.updatedat || s.updatedAt || s.createdat || s.createdAt || new Date().toISOString(),
-    files: s.files || [],
-    flashcards: s.flashcards || [],
-    quizzes: s.quizzes || [],
-    studyMaterials: s.studyMaterials || [],
-  }));
+export interface CreateSessionData {
+  title: string
+  description?: string
 }
 
-export async function createSession(title: string, description = ''): Promise<StudySession> {
-  const now = new Date().toISOString();
-  const newSession: StudySession = {
-    id: `session_${Date.now()}`,
-    title: title || 'Untitled Session',
-    description,
-    createdat: now,
-    updatedat: now,
-    files: [],
-    flashcards: [],
-    quizzes: [],
-    studyMaterials: [],
-  };
-  const sessions = await getSessions();
-  sessions.push(newSession);
-  localStorage.setItem('quiz_io_sessions', JSON.stringify(sessions));
-  return newSession;
+export interface UpdateSessionData {
+  title?: string
+  description?: string
 }
 
-export async function deleteSession(id: string): Promise<void> {
-  const sessions = await getSessions();
-  const filteredSessions = sessions.filter(s => s.id !== id);
-  localStorage.setItem('quiz_io_sessions', JSON.stringify(filteredSessions));
-}
-
-export async function getChatMessages(sessionId: string) {
-  const messages = localStorage.getItem(`quiz_io_chat_${sessionId}`);
-  return messages ? JSON.parse(messages) : [];
-}
-
-export async function addChatMessage(sessionId: string, message: any) {
-  const messages = await getChatMessages(sessionId);
-  messages.push(message);
-  localStorage.setItem(`quiz_io_chat_${sessionId}`, JSON.stringify(messages));
-}
-
-export async function addFileToSession(sessionId: string, fileUrl: string) {
-  const files = localStorage.getItem(`quiz_io_files_${sessionId}`);
-  const fileList = files ? JSON.parse(files) : [];
-  fileList.push(fileUrl);
-  localStorage.setItem(`quiz_io_files_${sessionId}`, JSON.stringify(fileList));
-}
-
-export async function addFlashcards(sessionId: string, flashcards: any[]) {
-  const existing = localStorage.getItem(`quiz_io_flashcards_${sessionId}`);
-  const flashcardList = existing ? JSON.parse(existing) : [];
-  flashcardList.push(...flashcards);
-  localStorage.setItem(`quiz_io_flashcards_${sessionId}`, JSON.stringify(flashcardList));
-}
-
-export async function updateSession(sessionId: string, data: Partial<StudySession>) {
-  const sessions = await getSessions();
-  const sessionIndex = sessions.findIndex(s => s.id === sessionId);
-  if (sessionIndex !== -1) {
-    sessions[sessionIndex] = { ...sessions[sessionIndex], ...data };
-    localStorage.setItem('quiz_io_sessions', JSON.stringify(sessions));
+export class SessionService {
+  static async getCurrentUser() {
+    const { data: { user } } = await supabase.auth.getUser()
+    return user
   }
-}
 
-export async function toggleFlashcardMastery(sessionId: string, cardId: string) {
-  const flashcards = localStorage.getItem(`quiz_io_flashcards_${sessionId}`);
-  const flashcardList = flashcards ? JSON.parse(flashcards) : [];
-  const cardIndex = flashcardList.findIndex((card: any) => card.id === cardId);
-  if (cardIndex !== -1) {
-    flashcardList[cardIndex].mastered = !flashcardList[cardIndex].mastered;
-    localStorage.setItem(`quiz_io_flashcards_${sessionId}`, JSON.stringify(flashcardList));
+  static async createSession(data: CreateSessionData): Promise<{ session: Session | null; error: string | null }> {
+    try {
+      const user = await this.getCurrentUser()
+      if (!user) {
+        return { session: null, error: 'User not authenticated' }
+      }
+
+      const { data: session, error } = await supabase
+        .from('sessions')
+        .insert({
+          user_id: user.id,
+          title: data.title,
+          description: data.description,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        return { session: null, error: error.message }
+      }
+
+      return { session, error: null }
+    } catch (error) {
+      return { session: null, error: 'An unexpected error occurred' }
+    }
   }
-}
 
-export async function addQuiz(sessionId: string, quiz: any) {
-  const quizzes = localStorage.getItem(`quiz_io_quizzes_${sessionId}`);
-  const quizList = quizzes ? JSON.parse(quizzes) : [];
-  quizList.push(quiz);
-  localStorage.setItem(`quiz_io_quizzes_${sessionId}`, JSON.stringify(quizList));
-}
+  static async getSessions(): Promise<{ sessions: Session[] | null; error: string | null }> {
+    try {
+      const user = await this.getCurrentUser()
+      if (!user) {
+        return { sessions: null, error: 'User not authenticated' }
+      }
 
-export async function getSessionById(sessionId: string): Promise<StudySession | null> {
-  const sessions = await getSessions();
-  return sessions.find(s => s.id === sessionId) || null;
+      const { data: sessions, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        return { sessions: null, error: error.message }
+      }
+
+      return { sessions, error: null }
+    } catch (error) {
+      return { sessions: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async getSession(sessionId: string): Promise<{ session: Session | null; error: string | null }> {
+    try {
+      const { data: session, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single()
+
+      if (error) {
+        return { session: null, error: error.message }
+      }
+
+      return { session, error: null }
+    } catch (error) {
+      return { session: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async updateSession(sessionId: string, data: UpdateSessionData): Promise<{ session: Session | null; error: string | null }> {
+    try {
+      const { data: session, error } = await supabase
+        .from('sessions')
+        .update(data)
+        .eq('id', sessionId)
+        .select()
+        .single()
+
+      if (error) {
+        return { session: null, error: error.message }
+      }
+
+      return { session, error: null }
+    } catch (error) {
+      return { session: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async deleteSession(sessionId: string): Promise<{ error: string | null }> {
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId)
+
+      if (error) {
+        return { error: error.message }
+      }
+
+      return { error: null }
+    } catch (error) {
+      return { error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async addFile(sessionId: string, file: Omit<FileItem, 'id' | 'session_id' | 'created_at'>): Promise<{ file: FileItem | null; error: string | null }> {
+    try {
+      const { data: fileData, error } = await supabase
+        .from('files')
+        .insert({
+          session_id: sessionId,
+          name: file.name,
+          type: file.type,
+          content: file.content,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        return { file: null, error: error.message }
+      }
+
+      return { file: fileData, error: null }
+    } catch (error) {
+      return { file: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async getFiles(sessionId: string): Promise<{ files: FileItem[] | null; error: string | null }> {
+    try {
+      const { data: files, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        return { files: null, error: error.message }
+      }
+
+      return { files, error: null }
+    } catch (error) {
+      return { files: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async saveStudyContent(sessionId: string, type: StudyContent['type'], content: string): Promise<{ studyContent: StudyContent | null; error: string | null }> {
+    try {
+      const { data: studyContent, error } = await supabase
+        .from('study_content')
+        .upsert({
+          session_id: sessionId,
+          type,
+          content,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        return { studyContent: null, error: error.message }
+      }
+
+      return { studyContent, error: null }
+    } catch (error) {
+      return { studyContent: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async getStudyContent(sessionId: string, type: StudyContent['type']): Promise<{ studyContent: StudyContent | null; error: string | null }> {
+    try {
+      const { data: studyContent, error } = await supabase
+        .from('study_content')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('type', type)
+        .single()
+
+      if (error) {
+        return { studyContent: null, error: error.message }
+      }
+
+      return { studyContent, error: null }
+    } catch (error) {
+      return { studyContent: null, error: 'An unexpected error occurred' }
+    }
+  }
 } 
