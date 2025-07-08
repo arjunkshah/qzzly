@@ -181,16 +181,12 @@ export const generateLongAnswer = async (
 export const createChat = (files: StudyFile[]): Chat => {
     let systemInstruction = `You are a helpful study assistant. The user has provided document(s) for context. Your task is to answer the user's questions based *only* on the information contained within these documents. Do not use external knowledge. If the answer is not in the documents, say so. After providing a comprehensive answer, add a "DEEP DIVE" section with 3 thought-provoking follow-up questions formatted as a markdown list.`;
 
+    // Include all file types (PDFs and images)
     const textContent = files
-      .filter(f => f.type === 'application/pdf')
-      .map(f => `\n\n--- Content from ${f.name} ---\n${f.content}`)
+      .map(f => `\n\n--- Content from ${f.name} (${f.type}) ---\n${f.content}`)
       .join('');
-      
     systemInstruction += textContent;
-    
-    // Note: The base `createChat` doesn't directly support images in system instructions in the same way `generateContent` does. 
-    // For chat, we will pass images with each message.
-    
+
     return ai.chats.create({
         model,
         config: { systemInstruction },

@@ -89,7 +89,7 @@ const ChatView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
                 <div className="text-base whitespace-pre-line">
                   <MarkdownRenderer content={message.content} />
                 </div>
-                <div className={`text-xs mt-2 ${message.role === 'user' ? 'text-white/70' : 'text-gray-500'}`}>{new Date(message.timestamp).toLocaleTimeString()}</div>
+                {/* Remove timestamp rendering */}
               </div>
             </div>
           ))}
