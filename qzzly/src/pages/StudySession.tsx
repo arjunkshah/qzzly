@@ -15,9 +15,9 @@ import { StudySession as StudySessionType, ChatMessage, FileItem, Flashcard } fr
 import { ArrowLeft, File, Plus, Send, Upload, Check, X, Book, BookOpen, MessageSquare, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FlashcardComponent } from "@/components/study/FlashcardComponent";
+import FlashcardsView from "@/components/study/FlashcardsView";
 import { QuizComponent } from "@/components/study/QuizComponent";
-import { ChatComponent } from "@/components/study/ChatComponent";
+import ChatView from "@/components/study/ChatView";
 import { FilesComponent } from "@/components/study/FilesComponent";
 import { LearnComponent } from "@/components/study/LearnComponent";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
@@ -171,30 +171,13 @@ export default function StudySession() {
             </TabsContent>
             
             <TabsContent value="flashcards">
-              <FlashcardComponent 
-                sessionId={session.id} 
-                flashcards={session.flashcards}
-                files={session.files}
-                onFlashcardAdded={(flashcard) => {
-                  setSession(prevSession => ({
-                    ...prevSession,
-                    flashcards: [...prevSession.flashcards, flashcard]
-                  }));
-                }}
-                onFlashcardsAdded={(flashcards) => {
-                  setSession(prevSession => ({
-                    ...prevSession,
-                    flashcards: [...prevSession.flashcards, ...flashcards]
-                  }));
-                }}
-                onMasteryToggled={(id, mastered) => {
-                  setSession(prevSession => ({
-                    ...prevSession,
-                    flashcards: prevSession.flashcards.map(card => 
-                      card.id === id ? { ...card, mastered: !card.mastered } : card
-                    )
-                  }));
-                }}
+              <FlashcardsView 
+                files={session.files.map(f => ({
+                  id: f.id,
+                  name: f.name,
+                  type: f.type,
+                  content: f.content || ''
+                }))}
               />
             </TabsContent>
             
@@ -223,15 +206,13 @@ export default function StudySession() {
             </TabsContent>
             
             <TabsContent value="chat">
-              <ChatComponent 
-                sessionId={session.id}
-                files={session.files}
-                onFileUploaded={(file) => {
-                  setSession({
-                    ...session,
-                    files: [...session.files, file]
-                  });
-                }}
+              <ChatView 
+                files={session.files.map(f => ({
+                  id: f.id,
+                  name: f.name,
+                  type: f.type,
+                  content: f.content || ''
+                }))}
               />
             </TabsContent>
           </div>
