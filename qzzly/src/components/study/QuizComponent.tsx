@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Quiz, Question, FileItem, Flashcard } from "@/types/session";
 // TODO: Implement SessionService.addQuiz to save quizzes
 import { SessionService } from "@/services/sessionService";
-import { generateQuiz } from "@/services/openaiService";
+import { generateQuiz } from "@/services/geminiService";
 import { Check, Plus, Sparkles, Settings, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -104,53 +104,22 @@ export function QuizComponent({
         setAiGenerating(false);
         return;
       }
-      // Build prompt based on settings
-      const fileContext = files.map(file => file.name.replace('.pdf', '')).join(", ");
-      const topic = quizSettings.topic.trim() 
-        ? quizSettings.topic 
-        : fileContext;
-      let prompt = `Generate a quiz about ${topic} with ${quizSettings.questionCount} questions`;
-      // Add difficulty to prompt
-      switch(quizSettings.difficulty) {
-        case "easy":
-          prompt += " at a beginner level";
-          break;
-        case "medium":
-          prompt += " at an intermediate level";
-          break;
-        case "hard":
-          prompt += " at an advanced level with challenging questions";
-          break;
-      }
-      if (quizSettings.showExplanations) {
-        prompt += " with detailed explanations for each correct answer";
-      }
-      const generatedQuiz = await generateQuiz(
-        prompt,
-        quizSettings.questionCount,
-        quizSettings.difficulty,
-        topic,
-        quizSettings.showExplanations,
-        quizSettings.questionTypes,
-        files,
-        sessionId
-      );
-      
-      // Make sure we have the right number of questions (API might return more or less)
-      const limitedQuestions = generatedQuiz.questions.slice(0, quizSettings.questionCount);
-      
+      // Gemini API: generateQuiz(files) returns QuizQuestion[]
+      const quizQuestions = await generateQuiz(files);
+      // Map QuizQuestion[] to Quiz type
+      const limitedQuestions = quizQuestions.slice(0, quizSettings.questionCount);
       const newQuiz: Quiz = {
         id: `quiz_${Date.now()}`,
-        title: generatedQuiz.title,
-        questions: limitedQuestions.map((q: Omit<Question, 'id'>, index: number) => ({
+        title: quizSettings.topic || (files[0]?.name.replace('.pdf', '') || 'Quiz'),
+        questions: limitedQuestions.map((q, index) => ({
           id: `q_${Date.now()}_${index}`,
-          ...q
-        }))
+          text: q.question,
+          options: q.options,
+          correctAnswer: q.options.findIndex(opt => opt === q.answer),
+          explanation: '',
+        })),
       };
-      
-      // TODO: Save newQuiz to the database using SessionService.addQuiz
       onQuizAdded(newQuiz);
-      
       toast({
         title: "Success",
         description: "New quiz generated successfully"
