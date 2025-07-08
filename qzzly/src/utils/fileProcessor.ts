@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 import { FileItem } from '../types/session';
 
 const readFileAsBase64 = (file: File): Promise<string> => {
