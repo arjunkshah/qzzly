@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check for existing session
     const checkUser = async () => {
+      if ((user as any)?.isGuest) return;
       try {
         const { user, error } = await AuthService.getCurrentUser();
         if (error) {

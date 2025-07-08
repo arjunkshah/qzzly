@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { StripeService, SubscriptionStatus } from '../services/stripeService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Subscription {
   id: string;
@@ -23,8 +24,14 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const getSubscriptionStatus = async () => {
+    if ((user as any)?.isGuest) {
+      setSubscription(null);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const { subscription: sub, error } = await StripeService.getSubscriptionStatus();

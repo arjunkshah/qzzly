@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { StudySession } from "@/types/session";
 import { SessionService } from "@/services/sessionService";
 import { useToast } from "@/hooks/use-toast";
-import { PaywallModal } from "@/components/PaywallModal";
 import { Calendar, Clock, Trash } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -259,13 +258,6 @@ export default function SessionsPage() {
         )}
       </main>
       
-      <PaywallModal
-        isOpen={false} // Removed paywallOpen state, so it's always false
-        onClose={() => {}} // No-op
-        action={'session'} // No-op
-        currentUsage={0} // No-op
-        limit={1}
-      />
     </div>
   );
 }

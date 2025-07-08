@@ -9,7 +9,6 @@ import { SessionService } from "@/services/sessionService";
 import { generateLongAnswer } from "@/services/openaiService";
 import { MessageSquare, Send, Upload, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { PaywallModal } from "@/components/PaywallModal";
 
 interface ChatComponentProps {
   sessionId: string;
@@ -320,13 +319,6 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
       <div className="text-sm text-gray-500 text-center">
         <p>The AI can help you understand concepts, generate study materials, and answer questions about your uploaded PDFs.</p>
       </div>
-      <PaywallModal
-        isOpen={false} // Removed paywallOpen state
-        onClose={() => {}} // Removed onClose prop
-        action="chat"
-        currentUsage={0}
-        limit={0}
-      />
     </div>
   );
 }
