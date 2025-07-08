@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { generateLongAnswer } from '../../services/geminiService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface LearnComponentProps {
   sessionId: string;
@@ -150,11 +152,27 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
   };
   
   const generateAnswer = async () => {
+    setIsGeneratingAnswer(true);
+    setLongAnswer("");
+    try {
+      // Convert FileItem[] to StudyFile[]
+      const studyFiles = (files || []).map(f => ({
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        content: f.content || ''
+      }));
+      const answer = await generateLongAnswer(studyFiles, question, answerComplexity);
+      setLongAnswer(answer);
+    } catch (err) {
       toast({
-      title: "Not implemented",
-      description: "Long answer generation is not available in this version.",
+        title: "Error",
+        description: "Failed to generate long answer.",
         variant: "destructive",
       });
+    } finally {
+      setIsGeneratingAnswer(false);
+    }
   };
 
   return (
@@ -302,92 +320,42 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
         </TabsContent>
         
         <TabsContent value="longAnswer">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-2xl font-semibold mb-1">Ask Deep Questions</h2>
-              <p className="text-gray-600">
-                Get comprehensive answers to complex questions about your study materials
-              </p>
-              {files.length > 0 && (
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  <span className="text-sm text-green-600 font-medium">
-                    {files.length} file{files.length > 1 ? 's' : ''} available for context
-                  </span>
-                </div>
-              )}
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-2xl font-semibold mb-4">Ask a Long-Form Question</h2>
+            <div className="mb-4">
+              <Label htmlFor="question">Your Question</Label>
+              <Textarea
+                id="question"
+                value={question}
+                onChange={e => setQuestion(e.target.value)}
+                placeholder="Type your question about the study materials..."
+                rows={3}
+                className="mt-2"
+              />
             </div>
-          </div>
-          
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Ask a Question</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="question">Your Question</Label>
-                  <Textarea
-                    id="question"
-                    placeholder="Enter a detailed question (e.g., 'Explain how the Holocaust impacted international law and human rights frameworks')"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    className="h-32"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Answer Complexity</Label>
-                  <RadioGroup value={answerComplexity} onValueChange={setAnswerComplexity} className="flex mt-2">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="simple" id="simple-answer" />
-                      <Label htmlFor="simple-answer">Simple</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 ml-4">
-                      <RadioGroupItem value="medium" id="medium-answer" />
-                      <Label htmlFor="medium-answer">Medium</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 ml-4">
-                      <RadioGroupItem value="advanced" id="advanced-answer" />
-                      <Label htmlFor="advanced-answer">Advanced</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                
-                <Button 
-                  onClick={generateAnswer} 
-                  disabled={isGeneratingAnswer}
-                  className="w-full"
-                >
-                  {isGeneratingAnswer ? (
-                    "Generating..."
-                  ) : (
-                    <>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Generate Answer
-                    </>
-                  )}
-                </Button>
+            <div className="mb-4">
+              <Label htmlFor="complexity">Answer Complexity</Label>
+              <Select value={answerComplexity} onValueChange={setAnswerComplexity}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select complexity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={generateAnswer} disabled={!question.trim() || isGeneratingAnswer} className="mb-4">
+              {isGeneratingAnswer ? 'Generating...' : 'Generate Long Answer'}
+            </Button>
+            {longAnswer && (
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+                <h3 className="font-bold mb-2">Answer</h3>
+                <div className="whitespace-pre-line text-gray-800">{longAnswer}</div>
               </div>
-            </CardContent>
-          </Card>
-          
-          {longAnswer && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Detailed Answer</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="prose max-w-none">
-                  <div 
-                    dangerouslySetInnerHTML={{ 
-                      __html: longAnswer.replace(/\n/g, '<br>') 
-                    }} 
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+            )}
+          </div>
         </TabsContent>
         
         <TabsContent value="material">

@@ -168,6 +168,16 @@ export const generateConceptMap = async (files: StudyFile[]): Promise<string> =>
     return match ? match[1] : '';
 };
 
+export const generateLongAnswer = async (
+  files: StudyFile[],
+  question: string,
+  complexity: string = 'medium'
+): Promise<string> => {
+  const prompt = `Answer the following question in a detailed, well-explained manner at a ${complexity} complexity level, using only the provided documents for context.\n\nQuestion: ${question}`;
+  const response = await generateContentWithFiles(files, prompt);
+  return response.text;
+};
+
 export const createChat = (files: StudyFile[]): Chat => {
     let systemInstruction = `You are a helpful study assistant. The user has provided document(s) for context. Your task is to answer the user's questions based *only* on the information contained within these documents. Do not use external knowledge. If the answer is not in the documents, say so. After providing a comprehensive answer, add a "DEEP DIVE" section with 3 thought-provoking follow-up questions formatted as a markdown list.`;
 
