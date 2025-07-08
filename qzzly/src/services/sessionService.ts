@@ -12,18 +12,32 @@ export interface UpdateSessionData {
 }
 
 export class SessionService {
+  static guestSessions: Session[] = [];
+  static guestSessionId = 1;
+
   static async getCurrentUser() {
     const { data: { user } } = await supabase.auth.getUser()
     return user
   }
 
   static async createSession(data: CreateSessionData): Promise<{ session: Session | null; error: string | null }> {
+    const user = await this.getCurrentUser();
+    if (!user) {
+      return { session: null, error: 'User not authenticated' };
+    }
+    if (user.id === 'guest') {
+      const session = {
+        id: `guest-session-${this.guestSessionId++}`,
+        user_id: 'guest',
+        title: data.title,
+        description: data.description,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.guestSessions.unshift(session);
+      return { session, error: null };
+    }
     try {
-      const user = await this.getCurrentUser()
-      if (!user) {
-        return { session: null, error: 'User not authenticated' }
-      }
-
       const { data: session, error } = await supabase
         .from('sessions')
         .insert({
@@ -45,12 +59,14 @@ export class SessionService {
   }
 
   static async getSessions(): Promise<{ sessions: Session[] | null; error: string | null }> {
+    const user = await this.getCurrentUser();
+    if (!user) {
+      return { sessions: null, error: 'User not authenticated' };
+    }
+    if (user.id === 'guest') {
+      return { sessions: this.guestSessions, error: null };
+    }
     try {
-      const user = await this.getCurrentUser()
-      if (!user) {
-        return { sessions: null, error: 'User not authenticated' }
-      }
-
       const { data: sessions, error } = await supabase
         .from('sessions')
         .select('*')
@@ -105,6 +121,11 @@ export class SessionService {
   }
 
   static async deleteSession(sessionId: string): Promise<{ error: string | null }> {
+    const user = await this.getCurrentUser();
+    if (user && user.id === 'guest') {
+      this.guestSessions = this.guestSessions.filter(s => s.id !== sessionId);
+      return { error: null };
+    }
     try {
       const { error } = await supabase
         .from('sessions')
