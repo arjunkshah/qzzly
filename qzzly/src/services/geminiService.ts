@@ -17,7 +17,6 @@ const parseJsonResponse = <T,>(jsonString: string): T | null => {
         cleanJsonString = match[2].trim();
     }
 
-    // Attempt to fix common JSON issues
     // Remove trailing commas
     cleanJsonString = cleanJsonString.replace(/,\s*([}\]])/g, '$1');
     // Remove any text before the first [ or {
@@ -36,7 +35,16 @@ const parseJsonResponse = <T,>(jsonString: string): T | null => {
     }
 
     try {
-        return JSON.parse(cleanJsonString) as T;
+        const parsed = JSON.parse(cleanJsonString) as any;
+        // Filter out invalid objects for flashcards/quizzes
+        if (Array.isArray(parsed)) {
+          return parsed.filter(obj =>
+            obj &&
+            (typeof obj.term === 'string' || typeof obj.front === 'string') &&
+            (typeof obj.definition === 'string' || typeof obj.back === 'string')
+          ) as T;
+        }
+        return parsed as T;
     } catch (error) {
         // Try to extract the first valid JSON array/object substring
         const arrMatch = cleanJsonString.match(/\[.*\]/s);
@@ -44,9 +52,17 @@ const parseJsonResponse = <T,>(jsonString: string): T | null => {
         let fallback = arrMatch ? arrMatch[0] : objMatch ? objMatch[0] : null;
         if (fallback) {
             try {
-                return JSON.parse(fallback) as T;
+                const parsed = JSON.parse(fallback) as any;
+                if (Array.isArray(parsed)) {
+                  return parsed.filter(obj =>
+                    obj &&
+                    (typeof obj.term === 'string' || typeof obj.front === 'string') &&
+                    (typeof obj.definition === 'string' || typeof obj.back === 'string')
+                  ) as T;
+                }
+                return parsed as T;
             } catch (e2) {
-                console.error("Failed fallback JSON parse:", e2);
+                // Ignore
             }
         }
         console.error("Failed to parse JSON response:", error);
@@ -126,9 +142,12 @@ export const generateFlashcards = async (
   if (topic && topic.trim()) {
     prompt += ` Focus on the topic: ${topic}. If the topic is not covered in the files, say so.`;
   }
-  prompt += ` The flashcards should be at a ${difficulty} difficulty level. The output must be a valid JSON array of objects, where each object has a "term" and a "definition" key. Do not include any text outside of the JSON array.`;
+  prompt += ` The flashcards should be at a ${difficulty} difficulty level. The output MUST be a valid JSON array of objects, where each object has a "term" and a "definition" key. Do not include any text, comments, or explanations outside of the JSON array. If you cannot generate valid JSON, return an empty array [].`;
   const response = await generateContentWithFiles(files, prompt, true);
   const parsed = parseJsonResponse<GeminiRawFlashcard[]>(response.text);
+  if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error("AI output was not valid JSON. Please try again or use a different file.");
+  }
   // Map Gemini's {term, definition} to Flashcard {id, front, back, mastered}
   return (parsed || []).map((card, idx) => ({
     id: `fc_${Date.now()}_${idx}`,
@@ -148,10 +167,13 @@ export const generateQuiz = async (
   if (topic && topic.trim()) {
     prompt += ` Focus on the topic: ${topic}. If the topic is not covered in the files, say so.`;
   }
-  prompt += ` The quiz should be at a ${difficulty} difficulty level. For each question, provide 4 distinct options and indicate the correct answer. The output must be a valid JSON array of objects. Each object should have a "question" (string), "options" (array of 4 strings), and "answer" (string, the full text of the correct option). Do not include any text outside of the JSON array.`;
+  prompt += ` The quiz should be at a ${difficulty} difficulty level. For each question, provide 4 distinct options and indicate the correct answer. The output MUST be a valid JSON array of objects. Each object should have a "question" (string), "options" (array of 4 strings), and "answer" (string, the full text of the correct option). Do not include any text, comments, or explanations outside of the JSON array. If you cannot generate valid JSON, return an empty array [].`;
   const response = await generateContentWithFiles(files, prompt, true);
-    const parsed = parseJsonResponse<QuizQuestion[]>(response.text);
-    return parsed || [];
+  const parsed = parseJsonResponse<QuizQuestion[]>(response.text);
+  if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error("AI output was not valid JSON. Please try again or use a different file.");
+  }
+  return parsed || [];
 };
 
 export const generateStudyPlan = async (files: StudyFile[]): Promise<string> => {
