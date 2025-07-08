@@ -12,8 +12,11 @@ export interface UpdateSessionData {
 }
 
 export class SessionService {
-  static guestSessions: Session[] = [];
+  static guestSessions: any[] = [];
   static guestSessionId = 1;
+  static guestFiles: Record<string, any[]> = {};
+  static guestStudyContent: Record<string, any> = {};
+  static guestFlashcards: Record<string, any[]> = {};
 
   static async getCurrentUser() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -83,7 +86,12 @@ export class SessionService {
     }
   }
 
-  static async getSession(sessionId: string): Promise<{ session: Session | null; error: string | null }> {
+  static async getSession(sessionId: string): Promise<{ session: any | null; error: string | null }> {
+    const user = await this.getCurrentUser();
+    if (user && user.id === 'guest') {
+      const session = this.guestSessions.find(s => s.id === sessionId) || null;
+      return { session, error: null };
+    }
     try {
       const { data: session, error } = await supabase
         .from('sessions')
@@ -142,7 +150,19 @@ export class SessionService {
     }
   }
 
-  static async addFile(sessionId: string, file: Omit<FileItem, 'id' | 'session_id' | 'created_at'>): Promise<{ file: FileItem | null; error: string | null }> {
+  static async addFile(sessionId: string, file: Omit<any, 'id' | 'session_id' | 'created_at'>): Promise<{ file: any | null; error: string | null }> {
+    const user = await this.getCurrentUser();
+    if (user && user.id === 'guest') {
+      if (!this.guestFiles[sessionId]) this.guestFiles[sessionId] = [];
+      const newFile = {
+        ...file,
+        id: `guest-file-${this.guestFiles[sessionId].length + 1}`,
+        session_id: sessionId,
+        created_at: new Date().toISOString(),
+      };
+      this.guestFiles[sessionId].push(newFile);
+      return { file: newFile, error: null };
+    }
     try {
       const { data: fileData, error } = await supabase
         .from('files')
@@ -165,7 +185,11 @@ export class SessionService {
     }
   }
 
-  static async getFiles(sessionId: string): Promise<{ files: FileItem[] | null; error: string | null }> {
+  static async getFiles(sessionId: string): Promise<{ files: any[] | null; error: string | null }> {
+    const user = await this.getCurrentUser();
+    if (user && user.id === 'guest') {
+      return { files: this.guestFiles[sessionId] || [], error: null };
+    }
     try {
       const { data: files, error } = await supabase
         .from('files')
@@ -183,7 +207,13 @@ export class SessionService {
     }
   }
 
-  static async saveStudyContent(sessionId: string, type: StudyContent['type'], content: string): Promise<{ studyContent: StudyContent | null; error: string | null }> {
+  static async saveStudyContent(sessionId: string, type: any, content: string): Promise<{ studyContent: any | null; error: string | null }> {
+    const user = await this.getCurrentUser();
+    if (user && user.id === 'guest') {
+      if (!this.guestStudyContent[sessionId]) this.guestStudyContent[sessionId] = {};
+      this.guestStudyContent[sessionId][type] = { session_id: sessionId, type, content };
+      return { studyContent: this.guestStudyContent[sessionId][type], error: null };
+    }
     try {
       const { data: studyContent, error } = await supabase
         .from('study_content')
@@ -205,7 +235,11 @@ export class SessionService {
   }
 }
 
-  static async getStudyContent(sessionId: string, type: StudyContent['type']): Promise<{ studyContent: StudyContent | null; error: string | null }> {
+  static async getStudyContent(sessionId: string, type: any): Promise<{ studyContent: any | null; error: string | null }> {
+    const user = await this.getCurrentUser();
+    if (user && user.id === 'guest') {
+      return { studyContent: this.guestStudyContent[sessionId]?.[type] || null, error: null };
+    }
     try {
       const { data: studyContent, error } = await supabase
         .from('study_content')
@@ -225,6 +259,17 @@ export class SessionService {
   }
 
   static async addFlashcards(sessionId: string, flashcards: { front: string; back: string; mastered: boolean }[]): Promise<any[]> {
+    const user = await this.getCurrentUser();
+    if (user && user.id === 'guest') {
+      if (!this.guestFlashcards[sessionId]) this.guestFlashcards[sessionId] = [];
+      const newFlashcards = flashcards.map((f, i) => ({
+        ...f,
+        id: `guest-flashcard-${this.guestFlashcards[sessionId].length + i + 1}`,
+        session_id: sessionId,
+      }));
+      this.guestFlashcards[sessionId].push(...newFlashcards);
+      return newFlashcards;
+    }
     // Insert multiple flashcards for a session
     const { data, error } = await supabase
       .from('flashcards')
