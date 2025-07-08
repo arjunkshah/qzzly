@@ -9,6 +9,18 @@ export enum StudyMode {
   CONCEPT_MAP = 'concept_map'
 }
 
+export interface FlashcardSet {
+  id: string;
+  name: string;
+  createdAt: string;
+  settings: {
+    count: number;
+    difficulty: string;
+    topic: string;
+  };
+  flashcards: Flashcard[];
+}
+
 export interface StudySession {
   id: string;
   title: string;
@@ -16,7 +28,7 @@ export interface StudySession {
   createdat: string;
   updatedat: string;
   files: FileItem[];
-  flashcards: Flashcard[];
+  flashcardSets: FlashcardSet[];
   quizzes: Quiz[];
   studyMaterials?: StudyMaterial[];
 }

@@ -46,7 +46,7 @@ export default function StudySession() {
         createdat: result.session.created_at,
         updatedat: result.session.updated_at,
         files: [],
-        flashcards: [],
+        flashcardSets: [],
         quizzes: [],
         studyMaterials: []
       };
@@ -172,12 +172,19 @@ export default function StudySession() {
             
             <TabsContent value="flashcards">
               <FlashcardsView 
-                files={session.files.map(f => ({
-                  id: f.id,
-                  name: f.name,
-                  type: f.type,
-                  content: f.content || ''
-                }))}
+                flashcardSets={session.flashcardSets}
+                onCreateSet={(newSet) => {
+                  setSession({
+                    ...session,
+                    flashcardSets: [...session.flashcardSets, newSet]
+                  });
+                }}
+                onUpdateSet={(updatedSet) => {
+                  setSession({
+                    ...session,
+                    flashcardSets: session.flashcardSets.map(set => set.id === updatedSet.id ? updatedSet : set)
+                  });
+                }}
               />
             </TabsContent>
             
