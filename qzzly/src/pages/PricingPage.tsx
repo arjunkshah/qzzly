@@ -1,119 +1,171 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Check, Crown, Star } from 'lucide-react';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import { SUBSCRIPTION_PLANS } from '@/lib/stripe';
-import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Check } from 'lucide-react';
+
+const PRICING_PLANS = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: '$0',
+    period: 'forever',
+    description: 'Perfect for getting started',
+    features: [
+      '3 study sessions per month',
+      'Basic AI summaries',
+      'PDF upload (up to 5MB)',
+      'Community support',
+    ],
+    priceId: null,
+    popular: false,
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '$9.99',
+    period: 'per month',
+    description: 'For serious students',
+    features: [
+      'Unlimited study sessions',
+      'Advanced AI features',
+      'PDF upload (up to 50MB)',
+      'Priority support',
+      'Export to PDF/Word',
+      'Custom study plans',
+    ],
+    priceId: 'price_pro_monthly',
+    popular: true,
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    price: '$19.99',
+    period: 'per month',
+    description: 'For power users',
+    features: [
+      'Everything in Pro',
+      'Unlimited file uploads',
+      'Advanced analytics',
+      'Priority AI processing',
+      'Custom integrations',
+      'Dedicated support',
+    ],
+    priceId: 'price_premium_monthly',
+    popular: false,
+  },
+];
 
 export default function PricingPage() {
-  const { subscription, createCheckoutSession, loading } = useSubscription();
-  const { toast } = useToast();
+  const { subscription, createCheckoutSession, createPortalSession } = useSubscription();
 
   const handleSubscribe = async (priceId: string, planName: string) => {
+    if (!priceId) {
+      alert('This plan is not available for purchase.');
+      return;
+    }
+
     try {
       await createCheckoutSession(priceId);
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: `Failed to start checkout for ${planName}. Please try again.`,
-        variant: 'destructive',
-      });
+      console.error('Error creating checkout session:', error);
+      alert('Failed to start checkout process. Please try again.');
     }
   };
 
-  const plans = [
-    {
-      key: 'FREE',
-      plan: SUBSCRIPTION_PLANS.FREE,
-      icon: <Star className="h-6 w-6" />,
-      popular: false,
-    },
-    {
-      key: 'PRO',
-      plan: SUBSCRIPTION_PLANS.PRO,
-      icon: <Crown className="h-6 w-6" />,
-      popular: true,
-    },
-    {
-      key: 'PREMIUM',
-      plan: SUBSCRIPTION_PLANS.PREMIUM,
-      icon: <Crown className="h-6 w-6" />,
-      popular: false,
-    },
-  ];
+  const handleManageSubscription = async () => {
+    try {
+      await createPortalSession();
+    } catch (error) {
+      console.error('Error creating portal session:', error);
+      alert('Failed to open billing portal. Please try again.');
+    }
+  };
+
+  const isCurrentPlan = (planId: string) => {
+    return subscription?.plan === planId;
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-16">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-12">
+      <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Choose Your Plan
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300">
-            Start your learning journey with the perfect plan for you
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Start with our free plan and upgrade as you grow. All plans include our core AI-powered study features.
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {plans.map(({ key, plan, icon, popular }) => (
+          {PRICING_PLANS.map((plan) => (
             <Card
-              key={key}
+              key={plan.id}
               className={`relative ${
-                popular
-                  ? 'border-2 border-primary shadow-lg scale-105'
-                  : 'border border-gray-200 dark:border-gray-700'
+                plan.popular
+                  ? 'border-purple-500 shadow-lg scale-105'
+                  : 'border-gray-200'
               }`}
             >
-              {popular && (
-                <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground">
+              {plan.popular && (
+                <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-purple-500 text-white">
                   Most Popular
                 </Badge>
               )}
               
               <CardHeader className="text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="p-3 bg-primary/10 rounded-full">
-                    {icon}
-                  </div>
-                </div>
                 <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                <CardDescription>
-                  {plan.price === 0 ? 'Free forever' : `$${plan.price}/month`}
-                </CardDescription>
+                <CardDescription>{plan.description}</CardDescription>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
+                  <span className="text-gray-600 ml-2">{plan.period}</span>
+                </div>
               </CardHeader>
 
               <CardContent>
                 <ul className="space-y-3 mb-6">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-center">
-                      <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
-                      <span className="text-sm">{feature}</span>
+                      <Check className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                      <span className="text-gray-700">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
-                <Button
-                  className="w-full"
-                  variant={popular ? 'default' : 'outline'}
-                  disabled={loading || (subscription?.plan === key.toLowerCase())}
-                  onClick={() => handleSubscribe(plan.priceId || '', plan.name)}
-                >
-                  {subscription?.plan === key.toLowerCase()
-                    ? 'Current Plan'
-                    : plan.price === 0
-                    ? 'Get Started'
-                    : 'Subscribe'}
-                </Button>
+                {isCurrentPlan(plan.id) ? (
+                  <div className="space-y-2">
+                    <Button className="w-full" variant="outline" disabled>
+                      Current Plan
+                    </Button>
+                    {plan.id !== 'free' && (
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        onClick={handleManageSubscription}
+                      >
+                        Manage Subscription
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => handleSubscribe(plan.priceId!, plan.name)}
+                    disabled={!plan.priceId}
+                  >
+                    {plan.priceId ? 'Get Started' : 'Current Plan'}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <div className="text-center mt-12">
-          <p className="text-gray-600 dark:text-gray-300">
-            All plans include a 7-day free trial. Cancel anytime.
+        <div className="mt-12 text-center">
+          <p className="text-gray-600">
+            All plans include a 14-day free trial. Cancel anytime.
           </p>
         </div>
       </div>

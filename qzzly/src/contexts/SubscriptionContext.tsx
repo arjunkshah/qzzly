@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { StripeService } from '@/services/stripeService';
-import { SUBSCRIPTION_PLANS } from '@/lib/stripe';
+import { StripeService, SubscriptionStatus } from '../services/stripeService';
 
 interface Subscription {
   id: string;
   status: 'active' | 'canceled' | 'past_due' | 'unpaid';
   plan: 'free' | 'pro' | 'premium';
   currentPeriodEnd: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
 }
 
 interface SubscriptionContextType {
@@ -26,31 +27,25 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const getSubscriptionStatus = async () => {
     try {
       setLoading(true);
-      const status = await StripeService.getSubscriptionStatus();
+      const { subscription: sub, error } = await StripeService.getSubscriptionStatus();
       
-      if (status.status === 'active' && status.subscription) {
+      if (error) {
+        console.error('Error getting subscription status:', error);
+        return;
+      }
+
+      if (sub) {
         setSubscription({
-          id: status.subscription.id,
-          status: status.subscription.status,
-          plan: status.subscription.plan,
-          currentPeriodEnd: status.subscription.current_period_end,
-        });
-      } else {
-        setSubscription({
-          id: 'free',
-          status: 'active',
-          plan: 'free',
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+          id: sub.id,
+          status: sub.status,
+          plan: sub.plan,
+          currentPeriodEnd: sub.currentPeriodEnd,
+          stripeCustomerId: sub.stripeCustomerId,
+          stripeSubscriptionId: sub.stripeSubscriptionId,
         });
       }
     } catch (error) {
       console.error('Error getting subscription status:', error);
-      setSubscription({
-        id: 'free',
-        status: 'active',
-        plan: 'free',
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      });
     } finally {
       setLoading(false);
     }
@@ -58,25 +53,42 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const createCheckoutSession = async (priceId: string) => {
     try {
-      await StripeService.createCheckoutSession({
+      const { sessionId, error } = await StripeService.createCheckoutSession({
         priceId,
-        successUrl: `${window.location.origin}/dashboard?success=true`,
+        successUrl: `${window.location.origin}/sessions?success=true`,
         cancelUrl: `${window.location.origin}/pricing?canceled=true`,
       });
+
+      if (error) {
+        console.error('Error creating checkout session:', error);
+        return;
+      }
+
+      if (sessionId) {
+        // Redirect to Stripe Checkout
+        window.location.href = `https://checkout.stripe.com/pay/${sessionId}`;
+      }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      throw error;
     }
   };
 
   const createPortalSession = async () => {
     try {
-      await StripeService.createPortalSession({
-        returnUrl: `${window.location.origin}/dashboard`,
+      const { url, error } = await StripeService.createPortalSession({
+        returnUrl: `${window.location.origin}/sessions`,
       });
+
+      if (error) {
+        console.error('Error creating portal session:', error);
+        return;
+      }
+
+      if (url) {
+        window.location.href = url;
+      }
     } catch (error) {
       console.error('Error creating portal session:', error);
-      throw error;
     }
   };
 
@@ -84,16 +96,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     getSubscriptionStatus();
   }, []);
 
-  const value = {
-    subscription,
-    loading,
-    createCheckoutSession,
-    createPortalSession,
-    getSubscriptionStatus,
-  };
-
   return (
-    <SubscriptionContext.Provider value={value}>
+    <SubscriptionContext.Provider
+      value={{
+        subscription,
+        loading,
+        createCheckoutSession,
+        createPortalSession,
+        getSubscriptionStatus,
+      }}
+    >
       {children}
     </SubscriptionContext.Provider>
   );
