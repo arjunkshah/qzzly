@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AuthService, AuthUser } from '@/services/authService';
+import { SessionService } from '@/services/sessionService';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -47,6 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription?.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    SessionService.setCurrentUser(user);
+  }, [user]);
 
   const signIn = async (email: string, password: string) => {
     try {

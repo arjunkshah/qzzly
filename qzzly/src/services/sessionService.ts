@@ -17,10 +17,16 @@ export class SessionService {
   static guestFiles: Record<string, any[]> = {};
   static guestStudyContent: Record<string, any> = {};
   static guestFlashcards: Record<string, any[]> = {};
+  static _currentUser: any = null;
+
+  static setCurrentUser(user: any) {
+    this._currentUser = user;
+  }
 
   static async getCurrentUser() {
-    const { data: { user } } = await supabase.auth.getUser()
-    return user
+    if (this._currentUser) return this._currentUser;
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
   }
 
   static async createSession(data: CreateSessionData): Promise<{ session: Session | null; error: string | null }> {
