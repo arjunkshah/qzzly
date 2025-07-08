@@ -138,11 +138,20 @@ export const generateFlashcards = async (
   }));
 };
 
-export const generateQuiz = async (files: StudyFile[]): Promise<QuizQuestion[]> => {
-    const prompt = `Create a multiple-choice quiz with 10 questions based on the following document(s). For each question, provide 4 distinct options and indicate the correct answer. The output must be a valid JSON array of objects. Each object should have a "question" (string), "options" (array of 4 strings), and "answer" (string, the full text of the correct option). Do not include any text outside of the JSON array.`;
-    const response = await generateContentWithFiles(files, prompt, true);
-    const parsed = parseJsonResponse<QuizQuestion[]>(response.text);
-    return parsed || [];
+export const generateQuiz = async (
+  files: StudyFile[],
+  count: number = 10,
+  difficulty: string = 'medium',
+  topic: string = ''
+): Promise<QuizQuestion[]> => {
+  let prompt = `Create a multiple-choice quiz with ${count} questions based on the following document(s).`;
+  if (topic && topic.trim()) {
+    prompt += ` Focus on the topic: ${topic}.`;
+  }
+  prompt += ` The quiz should be at a ${difficulty} difficulty level. For each question, provide 4 distinct options and indicate the correct answer. The output must be a valid JSON array of objects. Each object should have a "question" (string), "options" (array of 4 strings), and "answer" (string, the full text of the correct option). Do not include any text outside of the JSON array.`;
+  const response = await generateContentWithFiles(files, prompt, true);
+  const parsed = parseJsonResponse<QuizQuestion[]>(response.text);
+  return parsed || [];
 };
 
 export const generateStudyPlan = async (files: StudyFile[]): Promise<string> => {

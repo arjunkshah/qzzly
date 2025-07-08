@@ -26,6 +26,7 @@ interface QuizComponentProps {
 export function QuizComponent({ 
   sessionId, 
   quizzes, 
+  files, // <-- add files prop
   onQuizAdded 
 }: QuizComponentProps) {
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
@@ -93,20 +94,18 @@ export function QuizComponent({
   const handleGenerateQuiz = async () => {
     setAiGenerating(true);
     try {
-      const { session } = await SessionService.getSession(sessionId);
-      const { files } = await SessionService.getFiles(sessionId);
-      if (!session || !files || files.length === 0) {
+      // Use files prop directly (all file types)
+      if (!files || files.length === 0) {
         toast({
           title: "No study materials",
-          description: "Please upload PDF files first to generate quiz questions from your content",
+          description: "Please upload files first to generate quiz questions from your content",
           variant: "destructive",
         });
         setAiGenerating(false);
         return;
       }
-      // Gemini API: generateQuiz(files) returns QuizQuestion[]
-      const quizQuestions = await generateQuiz(files);
-      // Map QuizQuestion[] to Quiz type
+      // Pass options to Gemini
+      const quizQuestions = await generateQuiz(files, quizSettings.questionCount, quizSettings.difficulty, quizSettings.topic);
       const limitedQuestions = quizQuestions.slice(0, quizSettings.questionCount);
       const newQuiz: Quiz = {
         id: `quiz_${Date.now()}`,
