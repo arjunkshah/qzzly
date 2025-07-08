@@ -10,7 +10,6 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
-  setGuestUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,26 +21,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check for existing session
     const checkUser = async () => {
-      if ((user as any)?.isGuest) return;
       try {
         const { user: foundUser, error } = await AuthService.getCurrentUser();
         if (error) {
           console.error('Auth error:', error);
         }
-        if (!foundUser) {
-          // No session, set guest user
-          setUser({
-            id: 'guest',
-            email: 'guest@qzzly.com',
-            created_at: new Date().toISOString(),
-            isGuest: true,
-            name: 'Guest User',
-          } as any);
-        } else {
-          setUser(foundUser);
-        }
+        setUser(foundUser || null);
       } catch (error) {
         console.error('Error checking user:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -62,18 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     SessionService.setCurrentUser(user);
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      setUser({
-        id: 'guest',
-        email: 'guest@qzzly.com',
-        created_at: new Date().toISOString(),
-        isGuest: true,
-        name: 'Guest User',
-      } as any);
-    }
   }, [user]);
 
   const signIn = async (email: string, password: string) => {
@@ -121,16 +97,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const setGuestUser = () => {
-    setUser({
-      id: 'guest',
-      email: 'guest@qzzly.com',
-      created_at: new Date().toISOString(),
-      isGuest: true,
-      name: 'Guest User',
-    } as any);
-  };
-
   const value = {
     user,
     loading,
@@ -139,7 +105,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signInWithGoogle,
     signOut,
-    setGuestUser,
   };
 
   return (
