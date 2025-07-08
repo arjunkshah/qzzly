@@ -12,6 +12,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@google/genai": "^1.8.0",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-alert-dialog": "^1.1.2",
