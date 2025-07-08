@@ -4,7 +4,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Flashcard, StudyMaterial, FileItem } from "@/types/session";
 // TODO: Implement SessionService.toggleFlashcardMastery for marking flashcards as mastered
-import { generateStudyMaterial, generateLongAnswer } from "@/services/geminiService";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Check, X, ArrowLeft, ArrowRight, Lightbulb, BookText, MessageSquare, BrainCircuit } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -143,86 +142,19 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
   };
   
   const handleGenerateStudyMaterial = async () => {
-    if (!topic) {
-      toast({
-        title: "Topic required",
-        description: "Please enter a topic for your study material",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsGenerating(true);
-    setStudyMaterialContent(null);
-    try {
-      const materialContent = await generateStudyMaterial(
-        topic,
-        format,
-        complexity,
-        files,
-        sessionId
-      );
-      
-      const newMaterial: StudyMaterial = {
-        id: `sm-${Date.now()}`,
-        title: topic,
-        content: materialContent,
-        format,
-        complexity,
-        createdat: new Date().toISOString()
-      };
-      
-      setStudyMaterialContent(newMaterial);
-
-      toast({
-        title: "Study material generated",
-        description: "Your study material has been created successfully"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate study material",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+    toast({
+      title: "Not implemented",
+      description: "Study material generation is not available in this version.",
+      variant: "destructive",
+    });
   };
   
   const generateAnswer = async () => {
-    if (!question) {
-      toast({
-        title: "Question required",
-        description: "Please enter a question to generate an answer",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsGeneratingAnswer(true);
-    setLongAnswer("");
-    try {
-      const answer = await generateLongAnswer(
-        question,
-        answerComplexity,
-        files,
-        sessionId
-      );
-      
-      setLongAnswer(answer);
-      toast({
-        title: "Answer generated",
-        description: "Long-form answer has been generated successfully"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate answer",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingAnswer(false);
-    }
+    toast({
+      title: "Not implemented",
+      description: "Long answer generation is not available in this version.",
+      variant: "destructive",
+    });
   };
 
   return (
