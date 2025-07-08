@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { SignupDialog } from "@/components/auth/SignupDialog";
-import { createSession } from "@/services/sessionService";
+import { SessionService } from "@/services/sessionService";
 
 const HeroSection = () => {
   const [isDragging, setIsDragging] = useState(false);
@@ -15,10 +15,10 @@ const HeroSection = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   
   const handleFileUpload = async (files: FileList) => {
-    if (!isAuthenticated) {
+    if (!user) {
       toast({
         title: "Authentication required",
         description: "Please sign up or log in to upload files",
@@ -45,15 +45,22 @@ const HeroSection = () => {
       
       // Create a new study session
       const sessionName = firstFile.name.replace(/\.pdf$/, '');
-      const newSession = await createSession(sessionName);
-      
+      const newSession = await SessionService.createSession({ title: sessionName });
+      if (newSession.error || !newSession.session) {
+        toast({
+          title: "Session creation failed",
+          description: newSession.error || "Unknown error",
+          variant: "destructive"
+        });
+        return;
+      }
       toast({
         title: "Files uploaded successfully",
         description: `Created new study session: ${sessionName}`
       });
       
       // Navigate to the new session
-      navigate(`/session/${newSession.id}`);
+      navigate(`/session/${newSession.session.id}`);
     } catch (error) {
       toast({
         title: "Upload failed",
@@ -79,7 +86,7 @@ const HeroSection = () => {
   };
   
   const handleGetStarted = () => {
-    if (isAuthenticated) {
+    if (!!user) {
       navigate("/sessions");
     } else {
       // Let the user know they need to sign up
@@ -101,7 +108,7 @@ const HeroSection = () => {
             Upload your PDFs and explore our demo features to see how AI-powered study tools can accelerate your learning journey.
           </p>
           <div className="flex flex-col sm:flex-row gap-5 animate-fade-in" style={{ animationDelay: "0.4s" }}>
-            {isAuthenticated ? (
+            {!!user ? (
               <Button 
                 className="gradient-bg text-white px-8 py-7 rounded-lg text-lg font-medium shadow-lg shadow-purple-200"
                 onClick={handleGetStarted}

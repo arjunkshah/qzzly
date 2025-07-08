@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Flashcard, StudyMaterial, FileItem } from "@/types/session";
-import { toggleFlashcardMastery } from "@/services/sessionService";
+// TODO: Implement SessionService.toggleFlashcardMastery for marking flashcards as mastered
 import { generateStudyMaterial, generateLongAnswer } from "@/services/openaiService";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Check, X, ArrowLeft, ArrowRight, Lightbulb, BookText, MessageSquare, BrainCircuit } from "lucide-react";
@@ -74,7 +74,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     
     const currentCard = currentCards[currentIndex];
     try {
-      await toggleFlashcardMastery(sessionId, currentCard.id);
+      // await SessionService.toggleFlashcardMastery(sessionId, currentCard.id);
       
       // Remove the card from current deck
       const updatedCards = currentCards.filter(card => card.id !== currentCard.id);
@@ -142,7 +142,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
     setProgress(0);
   };
   
-  const generateStudyMaterial = async () => {
+  const handleGenerateStudyMaterial = async () => {
     if (!topic) {
       toast({
         title: "Topic required",
@@ -573,7 +573,7 @@ export function LearnComponent({ sessionId, flashcards, studyMaterials = [], fil
                 </div>
                 
                 <Button 
-                  onClick={generateStudyMaterial} 
+                  onClick={handleGenerateStudyMaterial} 
                   disabled={isGenerating}
                   className="w-full"
                 >

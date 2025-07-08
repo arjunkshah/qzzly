@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StudySession } from "@/types/session";
-import { getSessions, createSession, deleteSession } from "@/services/sessionService";
+import { SessionService } from "@/services/sessionService";
 import { useToast } from "@/hooks/use-toast";
 import { PaywallModal } from "@/components/PaywallModal";
 import { Calendar, Clock, Trash } from "lucide-react";
@@ -17,42 +17,42 @@ import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function SessionsPage() {
-  const { user, checkUsageLimit, incrementUsage } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: sessions = [], isLoading } = useQuery({
+  const { data: sessionsResult, isLoading } = useQuery({
     queryKey: ["sessions"],
-    queryFn: getSessions,
+    queryFn: SessionService.getSessions,
   });
+  const sessions = sessionsResult?.sessions || [];
   const [newSessionTitle, setNewSessionTitle] = useState("");
   const [newSessionDescription, setNewSessionDescription] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [paywallOpen, setPaywallOpen] = useState(false);
-  const [paywallAction, setPaywallAction] = useState<'session' | 'file' | 'chat'>('session');
+  // const [paywallOpen, setPaywallOpen] = useState(false);
+  // const [paywallAction, setPaywallAction] = useState<'session' | 'file' | 'chat'>('session');
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const createSessionMutation = useMutation({
-    mutationFn: (data: { title: string; description: string }) => createSession(data.title, data.description),
-    onSuccess: async (newSession) => {
-      // Increment usage for free users
-      if (user?.subscription.plan === 'free') {
-        await incrementUsage('session');
+    mutationFn: (data: { title: string; description: string }) => SessionService.createSession({ title: data.title, description: data.description }),
+    onSuccess: async (result) => {
+      if (result.error || !result.session) {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create session",
+          variant: "destructive",
+        });
+        return;
       }
-      
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) => [
-        ...old,
-        newSession,
-      ]);
       setNewSessionTitle("");
       setNewSessionDescription("");
       setDialogOpen(false);
       toast({
         title: "Success",
-        description: `"${newSession.title}" has been created successfully.`,
+        description: `"${result.session.title}" has been created successfully.`,
       });
       setTimeout(() => {
-        navigate(`/session/${newSession.id}`);
+        navigate(`/session/${result.session.id}`);
       }, 100);
     },
     onError: () => {
@@ -73,14 +73,6 @@ export default function SessionsPage() {
       });
       return;
     }
-
-    // Check usage limits for free users
-    if (!checkUsageLimit('session')) {
-      setPaywallAction('session');
-      setPaywallOpen(true);
-      return;
-    }
-
     createSessionMutation.mutate({
       title: newSessionTitle,
       description: newSessionDescription,
@@ -88,8 +80,16 @@ export default function SessionsPage() {
   };
 
   const deleteSessionMutation = useMutation({
-    mutationFn: (id: string) => deleteSession(id),
-    onSuccess: (_, id) => {
+    mutationFn: (id: string) => SessionService.deleteSession(id),
+    onSuccess: (result, id) => {
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
       queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) =>
         old.filter((s) => s.id !== id)
       );
@@ -222,20 +222,17 @@ export default function SessionsPage() {
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span>Created: {formatDate(session.createdat)}</span>
+                      <span>Created: {formatDate(session.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      <span>Updated: {formatDate(session.updatedat)}</span>
+                      <span>Updated: {formatDate(session.updated_at)}</span>
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter className="pt-3 border-t flex justify-between">
-                  <div className="flex gap-2 text-sm">
-                    <span className="text-purple-600">{session.files?.length || 0} Files</span>
-                    <span className="text-purple-600">{session.flashcards?.length || 0} Flashcards</span>
-                    <span className="text-purple-600">{session.quizzes?.length || 0} Quizzes</span>
-                  </div>
+                  {/* File/flashcard/quiz counts removed: not present in Session type */}
+                  <div />
                 </CardFooter>
               </Card>
             ))}
@@ -263,10 +260,10 @@ export default function SessionsPage() {
       </main>
       
       <PaywallModal
-        isOpen={paywallOpen}
-        onClose={() => setPaywallOpen(false)}
-        action={paywallAction}
-        currentUsage={user?.usage?.monthlySessions || 0}
+        isOpen={false} // Removed paywallOpen state, so it's always false
+        onClose={() => {}} // No-op
+        action={'session'} // No-op
+        currentUsage={0} // No-op
         limit={1}
       />
     </div>

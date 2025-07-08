@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "quizzly-launch"
+  },
+  "targets": {
+    "quizzly-launch": {
+      "hosting": {
+        "qzzly": [
+          "qzzly"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

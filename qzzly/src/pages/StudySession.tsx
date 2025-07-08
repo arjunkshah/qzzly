@@ -9,15 +9,8 @@ import {
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  getSessionById, 
-  addChatMessage, 
-  getChatMessages, 
-  addFileToSession, 
-  addFlashcard, 
-  toggleFlashcardMastery, 
-  addQuiz
-} from "@/services/sessionService";
+// TODO: Implement SessionService.getSession, addChatMessage, getChatMessages
+import { SessionService } from "@/services/sessionService";
 import { StudySession as StudySessionType, ChatMessage, FileItem, Flashcard } from "@/types/session";
 import { ArrowLeft, File, Plus, Send, Upload, Check, X, Book, BookOpen, MessageSquare, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -40,7 +33,24 @@ export default function StudySession() {
 
   const { isLoading, error, data } = useQuery({
     queryKey: ["session", id],
-    queryFn: () => getSessionById(id ?? ""),
+    queryFn: async () => {
+      const result = await SessionService.getSession(id ?? "");
+      if (result.error || !result.session) {
+        throw new Error(result.error || "Session not found");
+      }
+      // Transform Session to StudySession
+      return {
+        id: result.session.id,
+        title: result.session.title,
+        description: result.session.description || "",
+        createdat: result.session.created_at,
+        updatedat: result.session.updated_at,
+        files: [],
+        flashcards: [],
+        quizzes: [],
+        studyMaterials: []
+      };
+    },
     enabled: !!id,
     retry: 1,
     retryDelay: 1000,

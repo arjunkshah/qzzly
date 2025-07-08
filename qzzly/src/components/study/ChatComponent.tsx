@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage, FileItem } from "@/types/session";
-import { getChatMessages, addChatMessage, addFileToSession } from "@/services/sessionService";
+// TODO: Implement SessionService.getChatMessages, addChatMessage, addFileToSession
+import { SessionService } from "@/services/sessionService";
 import { generateLongAnswer } from "@/services/openaiService";
 import { MessageSquare, Send, Upload, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,14 +25,15 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user, checkUsageLimit } = useAuth();
-  const [paywallOpen, setPaywallOpen] = useState(false);
+  const { user } = useAuth();
+  // const [paywallOpen, setPaywallOpen] = useState(false);
 
   useEffect(() => {
     const loadMessages = async () => {
       setLoading(true);
       try {
-        const chatMessages = await getChatMessages(sessionId);
+        // const chatMessages = await SessionService.getChatMessages(sessionId);
+        const chatMessages = [];
         setMessages(chatMessages);
       } catch (error) {
         toast({
@@ -58,21 +60,13 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
-    // Enforce paywall for chat mode for free users
-    if (!checkUsageLimit('chat')) {
-      setPaywallOpen(true);
-      return;
-    }
-
     const userMessageContent = inputMessage;
     setInputMessage("");
     
     try {
       // Add user message to the chat
-      const userMessage = await addChatMessage(sessionId, {
-        role: "user",
-        content: userMessageContent,
-      });
+      // const userMessage = await SessionService.addChatMessage(sessionId, {
+      const userMessage = { id: Date.now().toString(), role: 'user' as const, content: userMessageContent, timestamp: new Date().toISOString() };
       
       setMessages(prevMessages => [...prevMessages, userMessage]);
       setResponding(true);
@@ -82,19 +76,15 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
         const response = await generateLongAnswer(userMessageContent, "medium", files, sessionId);
         
         // Add AI response to the chat
-        const aiMessage = await addChatMessage(sessionId, {
-          role: "assistant",
-          content: response,
-        });
+        // const aiMessage = await SessionService.addChatMessage(sessionId, {
+        const aiMessage = { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: response, timestamp: new Date().toISOString() };
         
         setMessages(prev => [...prev, aiMessage]);
       } catch (error) {
         console.error("Error generating response:", error);
         // Add error message to chat
-        const errorMessage = await addChatMessage(sessionId, {
-          role: "assistant",
-          content: "I'm sorry, I encountered an error processing your request. Please try again.",
-        });
+        // const errorMessage = await SessionService.addChatMessage(sessionId, {
+        const errorMessage = { id: (Date.now() + 2).toString(), role: 'assistant' as const, content: "I'm sorry, I encountered an error processing your request. Please try again.", timestamp: new Date().toISOString() };
         
         setMessages(prev => [...prev, errorMessage]);
         
@@ -116,12 +106,6 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Enforce paywall for chat mode for free users
-    if (!checkUsageLimit('chat')) {
-      setPaywallOpen(true);
-      return;
-    }
-
     if (!e.target.files || e.target.files.length === 0) return;
     
     const selectedFiles = Array.from(e.target.files);
@@ -155,7 +139,8 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
           content: base64Content // Add the file content
         };
         
-        const savedFile = await addFileToSession(sessionId, newFile);
+        // const savedFile = await SessionService.addFileToSession(sessionId, newFile);
+        const savedFile = { ...newFile, id: Date.now().toString() };
         onFileUploaded(savedFile);
         uploadedFileNames.push(file.name);
       }
@@ -166,10 +151,8 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
           ? `I've uploaded a file: ${uploadedFileNames[0]}`
           : `I've uploaded ${uploadedFileNames.length} files: ${uploadedFileNames.join(", ")}`;
         
-        const userMessage = await addChatMessage(sessionId, {
-          role: "user",
-          content: fileMessage,
-        });
+        // const userMessage = await SessionService.addChatMessage(sessionId, {
+        const userMessage = { id: (Date.now() + 3).toString(), role: 'user' as const, content: fileMessage, timestamp: new Date().toISOString() };
         
         setMessages(prevMessages => [...prevMessages, userMessage]);
         
@@ -185,19 +168,15 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
             sessionId
           );
           
-          const aiMessage = await addChatMessage(sessionId, {
-            role: "assistant",
-            content: response,
-          });
+          // const aiMessage = await SessionService.addChatMessage(sessionId, {
+          const aiMessage = { id: (Date.now() + 4).toString(), role: 'assistant' as const, content: response, timestamp: new Date().toISOString() };
           
           setMessages(prev => [...prev, aiMessage]);
         } catch (error) {
           console.error("Error generating response about files:", error);
           // Add error message to chat
-          const errorMessage = await addChatMessage(sessionId, {
-            role: "assistant",
-            content: "I've received your files and am processing them in the background. You can ask me questions about them shortly.",
-          });
+          // const errorMessage = await SessionService.addChatMessage(sessionId, {
+          const errorMessage = { id: (Date.now() + 5).toString(), role: 'assistant' as const, content: "I've received your files and am processing them in the background. You can ask me questions about them shortly.", timestamp: new Date().toISOString() };
           
           setMessages(prev => [...prev, errorMessage]);
         }
@@ -342,8 +321,8 @@ export function ChatComponent({ sessionId, files, onFileUploaded }: ChatComponen
         <p>The AI can help you understand concepts, generate study materials, and answer questions about your uploaded PDFs.</p>
       </div>
       <PaywallModal
-        isOpen={paywallOpen}
-        onClose={() => setPaywallOpen(false)}
+        isOpen={false} // Removed paywallOpen state
+        onClose={() => {}} // Removed onClose prop
         action="chat"
         currentUsage={0}
         limit={0}

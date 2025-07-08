@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Quiz, Question, FileItem, Flashcard } from "@/types/session";
-import { addQuiz, getSessionById } from "@/services/sessionService";
+// TODO: Implement SessionService.addQuiz to save quizzes
+import { SessionService } from "@/services/sessionService";
 import { generateQuiz } from "@/services/openaiService";
 import { Check, Plus, Sparkles, Settings, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -92,10 +93,9 @@ export function QuizComponent({
   const handleGenerateQuiz = async () => {
     setAiGenerating(true);
     try {
-      // Get session to check file content
-      const session = await getSessionById(sessionId);
-      
-      if (!session || !session.files || session.files.length === 0) {
+      const { session } = await SessionService.getSession(sessionId);
+      const { files } = await SessionService.getFiles(sessionId);
+      if (!session || !files || files.length === 0) {
         toast({
           title: "No study materials",
           description: "Please upload PDF files first to generate quiz questions from your content",
@@ -104,15 +104,12 @@ export function QuizComponent({
         setAiGenerating(false);
         return;
       }
-      
       // Build prompt based on settings
-      const fileContext = session.files.map(file => file.name.replace('.pdf', '')).join(", ");
+      const fileContext = files.map(file => file.name.replace('.pdf', '')).join(", ");
       const topic = quizSettings.topic.trim() 
         ? quizSettings.topic 
         : fileContext;
-        
       let prompt = `Generate a quiz about ${topic} with ${quizSettings.questionCount} questions`;
-      
       // Add difficulty to prompt
       switch(quizSettings.difficulty) {
         case "easy":
@@ -125,11 +122,9 @@ export function QuizComponent({
           prompt += " at an advanced level with challenging questions";
           break;
       }
-      
       if (quizSettings.showExplanations) {
         prompt += " with detailed explanations for each correct answer";
       }
-      
       const generatedQuiz = await generateQuiz(
         prompt,
         quizSettings.questionCount,
@@ -137,7 +132,7 @@ export function QuizComponent({
         topic,
         quizSettings.showExplanations,
         quizSettings.questionTypes,
-        session.files,
+        files,
         sessionId
       );
       
@@ -153,7 +148,7 @@ export function QuizComponent({
         }))
       };
       
-      await addQuiz(sessionId, newQuiz);
+      // TODO: Save newQuiz to the database using SessionService.addQuiz
       onQuizAdded(newQuiz);
       
       toast({

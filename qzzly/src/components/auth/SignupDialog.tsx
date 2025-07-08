@@ -43,7 +43,7 @@ interface SignupDialogProps {
 
 export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { signup, isLoading, signInWithGoogle } = useAuth();
+  const { signUp, signInWithGoogle, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -58,8 +58,8 @@ export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDia
   });
 
   const onSubmit = async (data: SignupFormData) => {
-    const success = await signup(data.email, data.password, data.name);
-    if (success) {
+    const result = await signUp(data.email, data.password);
+    if (result.success) {
       toast({
         title: "Account created!",
         description: "Welcome to Qzzly",
@@ -69,7 +69,24 @@ export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDia
     } else {
       toast({
         title: "Signup failed",
-        description: "Please check your information and try again",
+        description: result.error || "Please check your information and try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    const result = await signInWithGoogle();
+    if (result.success) {
+      toast({
+        title: "Signing in with Google...",
+        description: "You will be redirected shortly",
+      });
+      // The redirect will be handled by Supabase OAuth
+    } else {
+      toast({
+        title: "Google sign-in failed",
+        description: result.error || "Please try again",
         variant: "destructive",
       });
     }
@@ -147,11 +164,17 @@ export function SignupDialog({ children, redirectPath = "/sessions" }: SignupDia
             />
             
             <div className="flex justify-end pt-2">
-              <Button type="submit" className="gradient-bg" disabled={isLoading}>
-                {isLoading ? 'Creating account...' : 'Sign up'}
+              <Button type="submit" className="gradient-bg" disabled={loading}>
+                {loading ? 'Creating account...' : 'Sign up'}
               </Button>
             </div>
-            <Button type="button" variant="outline" className="w-full mt-2" onClick={signInWithGoogle}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full mt-2" 
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+            >
               Continue with Google
             </Button>
           </form>

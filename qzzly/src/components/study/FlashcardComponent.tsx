@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Flashcard, FileItem } from "@/types/session";
-import { addFlashcards, updateSession } from "@/services/sessionService";
+import { SessionService } from "@/services/sessionService";
 import { generateFlashcards } from "@/services/openaiService";
 import { Book, Plus, Check, X, Sparkles, Edit, Settings } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -59,7 +59,7 @@ export function FlashcardComponent({
 
     try {
       // Wrap the single flashcard in an array for the batch operation
-      const addedFlashcards = await addFlashcards(sessionId, [{ front, back, mastered: false }]);
+      const addedFlashcards = await SessionService.addFlashcards(sessionId, [{ front, back, mastered: false }]);
       const addedFlashcard = addedFlashcards[addedFlashcards.length - 1];
       
       onFlashcardAdded(addedFlashcard);
@@ -92,9 +92,8 @@ export function FlashcardComponent({
     }
 
     try {
-      await updateSession(sessionId, { 
-        flashcards: flashcards.map(f => f.id === editingFlashcard.id ? editingFlashcard : f) 
-      });
+      // TODO: Implement updateFlashcard in SessionService to update flashcards in the flashcards table
+      // await SessionService.updateFlashcard(editingFlashcard);
       
       setEditDialogOpen(false);
       setEditingFlashcard(null);
@@ -118,7 +117,8 @@ export function FlashcardComponent({
     );
 
     try {
-      await updateSession(sessionId, { flashcards: updatedFlashcards });
+      // TODO: Implement updateFlashcard in SessionService to update flashcards in the flashcards table
+      // await SessionService.updateFlashcard(...);
       onMasteryToggled(id, !flashcards.find(f => f.id === id)?.mastered);
       
       // Automatically move to next card after marking as mastered
@@ -196,7 +196,7 @@ export function FlashcardComponent({
           mastered: false 
       }));
         
-      const addedFlashcards = await addFlashcards(sessionId, flashcardsToAdd);
+      const addedFlashcards = await SessionService.addFlashcards(sessionId, flashcardsToAdd);
 
       // Add all flashcards to the UI state at once
       if (onFlashcardsAdded && addedFlashcards.length > 0) {

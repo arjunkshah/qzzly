@@ -9,7 +9,7 @@ export interface AuthUser {
 
 export interface SignUpData {
   email: string
-  password: string
+  password: string 
 }
 
 export interface SignInData {
@@ -47,7 +47,7 @@ export class AuthService {
   static async signIn(data: SignInData): Promise<{ user: AuthUser | null; error: string | null }> {
     try {
       const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: data.email,
+    email: data.email,
         password: data.password,
       })
 
@@ -65,6 +65,26 @@ export class AuthService {
       }
 
       return { user: null, error: 'Sign in failed' }
+    } catch (error) {
+      return { user: null, error: 'An unexpected error occurred' }
+    }
+  }
+
+  static async signInWithGoogle(): Promise<{ user: AuthUser | null; error: string | null }> {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/sessions`
+        }
+      })
+
+      if (error) {
+        return { user: null, error: error.message }
+      }
+
+      // For OAuth, we don't get the user immediately - it will be handled by the auth state change
+      return { user: null, error: null }
     } catch (error) {
       return { user: null, error: 'An unexpected error occurred' }
     }

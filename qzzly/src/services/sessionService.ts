@@ -181,8 +181,8 @@ export class SessionService {
       return { studyContent, error: null }
     } catch (error) {
       return { studyContent: null, error: 'An unexpected error occurred' }
-    }
   }
+}
 
   static async getStudyContent(sessionId: string, type: StudyContent['type']): Promise<{ studyContent: StudyContent | null; error: string | null }> {
     try {
@@ -201,5 +201,20 @@ export class SessionService {
     } catch (error) {
       return { studyContent: null, error: 'An unexpected error occurred' }
     }
+  }
+
+  static async addFlashcards(sessionId: string, flashcards: { front: string; back: string; mastered: boolean }[]): Promise<any[]> {
+    // Insert multiple flashcards for a session
+    const { data, error } = await supabase
+      .from('flashcards')
+      .insert(flashcards.map(f => ({
+        session_id: sessionId,
+        front: f.front,
+        back: f.back,
+        mastered: f.mastered
+      })))
+      .select();
+    if (error) throw new Error(error.message);
+    return data;
   }
 } 

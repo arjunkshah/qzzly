@@ -51,12 +51,12 @@ const generateContentWithFiles = async (files: StudyFile[], userPrompt: string, 
     parts.unshift({ text: userPrompt });
 
     try {
-        const response = await ai.models.generateContent({
-            model,
-            contents: { parts },
-            config: isJson ? { responseMimeType: "application/json" } : {},
-        });
-        return response;
+    const response = await ai.models.generateContent({
+        model,
+        contents: { parts },
+        config: isJson ? { responseMimeType: "application/json" } : {},
+    });
+    return response;
     } catch (error) {
         console.error('Gemini API error:', error);
         throw new Error('Failed to generate content. Please check your API key and try again.');

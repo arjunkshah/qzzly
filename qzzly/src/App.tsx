@@ -22,17 +22,17 @@ const App = () => (
       <AuthProvider>
         <SubscriptionProvider>
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
+          <Routes>
+            <Route path="/" element={<Index />} />
               <Route path="/pricing" element={<PricingPage />} />
-              <Route element={<ProtectedRoute redirectTo="/" />}> 
-                <Route path="/sessions" element={<SessionsPage />} />
-                <Route path="/session/:id" element={<StudySession />} />
-              </Route>
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+            <Route element={<ProtectedRoute redirectTo="/" />}> 
+              <Route path="/sessions" element={<SessionsPage />} />
+              <Route path="/session/:id" element={<StudySession />} />
+            </Route>
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
         </SubscriptionProvider>
       </AuthProvider>
     </TooltipProvider>
