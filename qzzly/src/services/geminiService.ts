@@ -34,6 +34,20 @@ const parseJsonResponse = <T,>(jsonString: string): T | null => {
       cleanJsonString = cleanJsonString.slice(0, lastBracket + 1);
     }
 
+    // Pre-parse cleanup: remove lines inside the array that are not valid JSON objects
+    if (cleanJsonString.startsWith('[')) {
+      cleanJsonString = cleanJsonString
+        .split('\n')
+        .filter(line =>
+          line.trim().startsWith('{') ||
+          line.trim().endsWith('}') ||
+          line.trim() === '[' ||
+          line.trim() === ']' ||
+          line.trim() === ','
+        )
+        .join('\n');
+    }
+
     try {
         const parsed = JSON.parse(cleanJsonString) as any;
         // Filter out invalid objects for flashcards/quizzes
