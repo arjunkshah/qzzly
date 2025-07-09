@@ -225,7 +225,7 @@ export const createChat = (files: StudyFile[]): any => {
   return {
     async sendMessage(userMessage: string) {
       try {
-        const prompt = `Context:\n${context}\n\nUser: ${userMessage}\n\nAssistant:`;
+        const prompt = `Context:\n${context}\n\nUser: ${userMessage}\n\nAssistant: Please format your response using Markdown. Use **bold** for emphasis, - or 1. for lists, and never use asterisks for lists or emphasis. Always use proper Markdown formatting for all structure, lists, and highlights.`;
         const response = await ai.models.generateContent({
         model,
           contents: [{ text: prompt }],
