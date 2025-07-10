@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { Session, FileItem, StudyContent } from '@/lib/supabase'
+import { Flashcard, Quiz, ChatMessage, FlashcardSet } from '@/types/session'
+import type { User as SupabaseUser } from '@supabase/auth-js'
 
 export interface CreateSessionData {
   title: string
@@ -12,21 +14,21 @@ export interface UpdateSessionData {
 }
 
 export class SessionService {
-  static guestSessions: any[] = [];
+  static guestSessions: Session[] = [];
   static guestSessionId = 1;
-  static guestFiles: Record<string, any[]> = {};
-  static guestStudyContent: Record<string, any> = {};
-  static guestFlashcards: Record<string, any[]> = {};
-  static _currentUser: any = null;
+  static guestFiles: Record<string, FileItem[]> = {};
+  static guestStudyContent: Record<string, Record<string, StudyContent>> = {};
+  static guestFlashcards: Record<string, Flashcard[]> = {};
+  static _currentUser: SupabaseUser | null = null;
 
-  static setCurrentUser(user: any) {
+  static setCurrentUser(user: SupabaseUser | null) {
     this._currentUser = user;
   }
 
-  static async getCurrentUser() {
+  static async getCurrentUser(): Promise<SupabaseUser | null> {
     if (this._currentUser) return this._currentUser;
     const { data: { user } } = await supabase.auth.getUser();
-    return user;
+    return user || null;
   }
 
   static async createSession(data: CreateSessionData): Promise<{ session: Session | null; error: string | null }> {
@@ -92,7 +94,7 @@ export class SessionService {
     }
   }
 
-  static async getSession(sessionId: string): Promise<{ session: any | null; error: string | null }> {
+  static async getSession(sessionId: string): Promise<{ session: Session | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       const session = this.guestSessions.find(s => s.id === sessionId) || null;
@@ -156,7 +158,7 @@ export class SessionService {
     }
   }
 
-  static async addFile(sessionId: string, file: Omit<any, 'id' | 'session_id' | 'created_at'>): Promise<{ file: any | null; error: string | null }> {
+  static async addFile(sessionId: string, file: Omit<FileItem, 'id' | 'session_id' | 'created_at'>): Promise<{ file: FileItem | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       if (!this.guestFiles[sessionId]) this.guestFiles[sessionId] = [];
@@ -191,7 +193,7 @@ export class SessionService {
     }
   }
 
-  static async getFiles(sessionId: string): Promise<{ files: any[] | null; error: string | null }> {
+  static async getFiles(sessionId: string): Promise<{ files: FileItem[] | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       return { files: this.guestFiles[sessionId] || [], error: null };
@@ -213,11 +215,19 @@ export class SessionService {
     }
   }
 
-  static async saveStudyContent(sessionId: string, contentType: any, content: string): Promise<{ studyContent: any | null; error: string | null }> {
+  static async saveStudyContent(sessionId: string, contentType: StudyContent['type'], content: string): Promise<{ studyContent: StudyContent | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       if (!this.guestStudyContent[sessionId]) this.guestStudyContent[sessionId] = {};
-      this.guestStudyContent[sessionId][contentType] = { session_id: sessionId, content_type: contentType, content };
+      const allowedTypes: StudyContent['type'][] = ['summary', 'notes', 'outline', 'flashcards', 'quiz', 'study_plan', 'concept_map'];
+      const safeType = (allowedTypes.includes(contentType as StudyContent['type']) ? contentType : 'notes') as StudyContent['type'];
+      this.guestStudyContent[sessionId][contentType] = {
+        id: `guest-study-content-${sessionId}-${contentType}`,
+        session_id: sessionId,
+        type: safeType,
+        content,
+        created_at: new Date().toISOString(),
+      };
       return { studyContent: this.guestStudyContent[sessionId][contentType], error: null };
     }
     try {
@@ -241,7 +251,7 @@ export class SessionService {
   }
 }
 
-  static async getStudyContent(sessionId: string, contentType: any): Promise<{ studyContent: any | null; error: string | null }> {
+  static async getStudyContent(sessionId: string, contentType: StudyContent['type']): Promise<{ studyContent: StudyContent | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       return { studyContent: this.guestStudyContent[sessionId]?.[contentType] || null, error: null };
@@ -264,7 +274,7 @@ export class SessionService {
     }
   }
 
-  static async addFlashcards(sessionId: string, flashcards: { front: string; back: string; mastered: boolean }[]): Promise<any[]> {
+  static async addFlashcards(sessionId: string, flashcards: Omit<Flashcard, 'id' | 'session_id'>[]): Promise<Flashcard[]> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       if (!this.guestFlashcards[sessionId]) this.guestFlashcards[sessionId] = [];
@@ -290,7 +300,7 @@ export class SessionService {
     return data;
   }
 
-  static async addQuiz(sessionId: string, quiz: { title: string; questions: any[] }): Promise<any> {
+  static async addQuiz(sessionId: string, quiz: Omit<Quiz, 'id' | 'session_id'>): Promise<Quiz> {
     const { data, error } = await supabase
       .from('quizzes')
       .insert({
@@ -304,7 +314,7 @@ export class SessionService {
     return data;
   }
 
-  static async getQuizzes(sessionId: string): Promise<any[]> {
+  static async getQuizzes(sessionId: string): Promise<Quiz[]> {
     const { data, error } = await supabase
       .from('quizzes')
       .select('*')
@@ -314,7 +324,7 @@ export class SessionService {
     return data;
   }
 
-  static async addChatMessage(sessionId: string, message: { role: string; content: string; timestamp: string }): Promise<any> {
+  static async addChatMessage(sessionId: string, message: Omit<ChatMessage, 'id' | 'session_id'>): Promise<ChatMessage> {
     const { data, error } = await supabase
       .from('chat')
       .insert({
@@ -329,7 +339,7 @@ export class SessionService {
     return data;
   }
 
-  static async getChatMessages(sessionId: string): Promise<any[]> {
+  static async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
     const { data, error } = await supabase
       .from('chat')
       .select('*')
@@ -339,7 +349,7 @@ export class SessionService {
     return data;
   }
 
-  static async getFlashcards(sessionId: string): Promise<any[]> {
+  static async getFlashcards(sessionId: string): Promise<FlashcardSet[]> {
     // Fetch all flashcard sets for the session
     const { data: sets, error: setError } = await supabase
       .from('flashcard_sets')
@@ -349,14 +359,14 @@ export class SessionService {
     if (setError) throw new Error(setError.message);
     if (!sets || sets.length === 0) return [];
     // Fetch flashcards for each set
-    const setIds = sets.map((s: any) => s.id);
+    const setIds = sets.map((s: FlashcardSet) => s.id);
     const { data: flashcards, error: fcError } = await supabase
       .from('flashcards')
       .select('*')
       .in('set_id', setIds);
     if (fcError) throw new Error(fcError.message);
     // Group flashcards by set_id
-    const flashcardsBySet: Record<string, any[]> = {};
+    const flashcardsBySet: Record<string, Flashcard[]> = {};
     for (const fc of flashcards || []) {
       if (!flashcardsBySet[fc.set_id]) flashcardsBySet[fc.set_id] = [];
       flashcardsBySet[fc.set_id].push({
@@ -367,10 +377,10 @@ export class SessionService {
       });
     }
     // Build FlashcardSet objects
-    return sets.map((set: any) => ({
+    return sets.map((set: FlashcardSet) => ({
       id: set.id,
       name: set.name,
-      createdAt: set.created_at,
+      createdAt: set.createdAt,
       settings: set.settings,
       flashcards: flashcardsBySet[set.id] || [],
     }));

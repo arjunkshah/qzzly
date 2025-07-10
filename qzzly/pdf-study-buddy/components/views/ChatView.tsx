@@ -72,7 +72,7 @@ const ChatView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
       }]);
       setSelectedFileIds(new Set(files.map(f => f.id)));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [files]);
 
   const handleFileSelection = (fileId: string) => {
@@ -104,7 +104,7 @@ const ChatView: React.FC<{ files: StudyFile[] }> = ({ files }) => {
     try {
         const contextFiles = files.filter(f => selectedFileIds.has(f.id));
         const parts: Part[] = [];
-        let textContent = `Using the context from the files: ${contextFiles.map(f => f.name).join(', ')}, answer the following question: ${messageText}`;
+        const textContent = `Using the context from the files: ${contextFiles.map(f => f.name).join(', ')}, answer the following question: ${messageText}`;
         
         const imageFiles = contextFiles.filter(f => f.type.startsWith('image/'));
         imageFiles.forEach(file => {

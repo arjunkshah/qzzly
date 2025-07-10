@@ -86,7 +86,7 @@ const HeroSection = () => {
   };
   
   const handleGetStarted = () => {
-    if (!!user) {
+    if (user) {
       navigate("/sessions");
     } else {
       // Let the user know they need to sign up
@@ -108,7 +108,7 @@ const HeroSection = () => {
             Upload your PDFs and explore our demo features to see how AI-powered study tools can accelerate your learning journey.
           </p>
           <div className="flex flex-col sm:flex-row gap-5 animate-fade-in" style={{ animationDelay: "0.4s" }}>
-            {!!user ? (
+            {user ? (
               <Button 
                 className="gradient-bg text-white px-8 py-7 rounded-lg text-lg font-medium shadow-lg shadow-purple-200"
                 onClick={handleGetStarted}

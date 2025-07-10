@@ -49,7 +49,7 @@ const parseJsonResponse = <T,>(jsonString: string): T | null => {
     }
 
     try {
-        const parsed = JSON.parse(cleanJsonString) as any;
+        const parsed = JSON.parse(cleanJsonString) as unknown;
         // Filter out invalid objects for flashcards/quizzes
         if (Array.isArray(parsed)) {
           return parsed.filter(obj =>
@@ -63,10 +63,10 @@ const parseJsonResponse = <T,>(jsonString: string): T | null => {
         // Try to extract the first valid JSON array/object substring
         const arrMatch = cleanJsonString.match(/\[.*\]/s);
         const objMatch = cleanJsonString.match(/\{.*\}/s);
-        let fallback = arrMatch ? arrMatch[0] : objMatch ? objMatch[0] : null;
+        const fallback = arrMatch ? arrMatch[0] : objMatch ? objMatch[0] : null;
         if (fallback) {
             try {
-                const parsed = JSON.parse(fallback) as any;
+                const parsed = JSON.parse(fallback) as unknown;
                 if (Array.isArray(parsed)) {
                   return parsed.filter(obj =>
                     obj &&
@@ -214,7 +214,11 @@ export const generateLongAnswer = async (
   return response.text;
 };
 
-export const createChat = (files: StudyFile[]): any => {
+interface GeminiChat {
+  sendMessage: (userMessage: string) => Promise<{ text: string }>
+}
+
+export const createChat = (files: StudyFile[]): GeminiChat => {
   // Prepare a context string from all files, limit to 10,000 characters
   let context = files
     .map(f => `--- Content from ${f.name} (${f.type}) ---\n${(f.content || '').slice(0, 2000)}`)
@@ -231,9 +235,10 @@ export const createChat = (files: StudyFile[]): any => {
           contents: [{ text: prompt }],
     });
         return { text: response.text };
-      } catch (err: any) {
-        console.error('Gemini chat error:', err);
-        throw new Error(err?.message || 'Gemini chat failed');
+      } catch (err: unknown) {
+        const error = err as Error;
+        console.error('Gemini chat error:', error);
+        throw new Error(error?.message || 'Gemini chat failed');
       }
     }
   };
