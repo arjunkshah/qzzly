@@ -215,16 +215,16 @@ export class SessionService {
     }
   }
 
-  static async saveStudyContent(sessionId: string, contentType: StudyContent['type'], content: string): Promise<{ studyContent: StudyContent | null; error: string | null }> {
+  static async saveStudyContent(sessionId: string, contentType: StudyContent['content_type'], content: string): Promise<{ studyContent: StudyContent | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       if (!this.guestStudyContent[sessionId]) this.guestStudyContent[sessionId] = {};
-      const allowedTypes: StudyContent['type'][] = ['summary', 'notes', 'outline', 'flashcards', 'quiz', 'study_plan', 'concept_map'];
-      const safeType = (allowedTypes.includes(contentType as StudyContent['type']) ? contentType : 'notes') as StudyContent['type'];
+      const allowedTypes: StudyContent['content_type'][] = ['summary', 'notes', 'outline', 'flashcards', 'quiz', 'study_plan', 'concept_map'];
+      const safeType = (allowedTypes.includes(contentType as StudyContent['content_type']) ? contentType : 'notes') as StudyContent['content_type'];
       this.guestStudyContent[sessionId][contentType] = {
         id: `guest-study-content-${sessionId}-${contentType}`,
         session_id: sessionId,
-        type: safeType,
+        content_type: contentType,
         content,
         created_at: new Date().toISOString(),
       };
@@ -251,7 +251,7 @@ export class SessionService {
   }
 }
 
-  static async getStudyContent(sessionId: string, contentType: StudyContent['type']): Promise<{ studyContent: StudyContent | null; error: string | null }> {
+  static async getStudyContent(sessionId: string, contentType: StudyContent['content_type']): Promise<{ studyContent: StudyContent | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       return { studyContent: this.guestStudyContent[sessionId]?.[contentType] || null, error: null };

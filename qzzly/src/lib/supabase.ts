@@ -33,8 +33,8 @@ export interface FileItem {
 
 export interface StudyContent {
   id: string
-  session_id: string
-  type: 'summary' | 'notes' | 'outline' | 'flashcards' | 'quiz' | 'study_plan' | 'concept_map'
-  content: string
-  created_at: string
+  session_id: string | null
+  content_type: string
+  content: string | null
+  created_at: string | null
 } 
