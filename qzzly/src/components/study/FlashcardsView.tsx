@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FlashcardSet, Flashcard } from '../../types/session';
+import { FlashcardSet, Flashcard, StudyFile } from '../../types/session';
 import ViewContainer from '../ui/ViewContainer';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -15,10 +15,11 @@ interface FlashcardsViewProps {
   flashcardSets: FlashcardSet[];
   onCreateSet: (set: FlashcardSet) => void;
   onUpdateSet: (set: FlashcardSet) => void;
-  files: any[];
+  files: StudyFile[];
+  sessionId: string;
 }
 
-const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreateSet, onUpdateSet, files }) => {
+const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreateSet, onUpdateSet, files, sessionId }) => {
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newSetName, setNewSetName] = useState('');
@@ -47,7 +48,7 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
       const { data: savedSet, error: setError } = await supabase
         .from('flashcard_sets')
         .insert({
-          session_id: files[0]?.session_id, // assumes all files are for this session
+          session_id: sessionId, // use prop instead of files[0]?.session_id
           name: setName,
           created_at: new Date().toISOString(),
           settings: settings,
@@ -56,11 +57,11 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
         .single();
       if (setError) throw new Error(setError.message);
       // Save flashcards to Supabase
-      const flashcardsToSave = generated.map((fc: any) => ({
+      const flashcardsToSave = generated.map((fc: Flashcard) => ({
         set_id: savedSet.id,
         front: fc.front,
         back: fc.back,
-        mastered: fc.mastered || false,
+        mastered: false,
       }));
       const { data: savedFlashcards, error: fcError } = await supabase
         .from('flashcards')

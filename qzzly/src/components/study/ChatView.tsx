@@ -7,6 +7,7 @@ import { Card, CardContent } from '../ui/card';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import { IconMic, IconMessageSquare } from '../../lib/constants';
 import { createChat } from '../../services/geminiService';
+import type { GeminiChat } from '../../services/geminiService';
 import { SessionService } from '../../services/sessionService';
 
 interface ChatViewProps {
@@ -20,7 +21,7 @@ const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) =
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [chat, setChat] = useState<any>(null);
+  const [chat, setChat] = useState<GeminiChat | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -69,11 +70,12 @@ const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) =
       try {
         await SessionService.addChatMessage(sessionId, response);
       } catch (e) { /* ignore for now */ }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: error?.message || 'Sorry, I encountered an error while processing your request. Please try again.',
+        content: err?.message || 'Sorry, I encountered an error while processing your request. Please try again.',
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
