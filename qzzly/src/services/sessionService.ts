@@ -213,19 +213,19 @@ export class SessionService {
     }
   }
 
-  static async saveStudyContent(sessionId: string, type: any, content: string): Promise<{ studyContent: any | null; error: string | null }> {
+  static async saveStudyContent(sessionId: string, contentType: any, content: string): Promise<{ studyContent: any | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
       if (!this.guestStudyContent[sessionId]) this.guestStudyContent[sessionId] = {};
-      this.guestStudyContent[sessionId][type] = { session_id: sessionId, type, content };
-      return { studyContent: this.guestStudyContent[sessionId][type], error: null };
+      this.guestStudyContent[sessionId][contentType] = { session_id: sessionId, content_type: contentType, content };
+      return { studyContent: this.guestStudyContent[sessionId][contentType], error: null };
     }
     try {
       const { data: studyContent, error } = await supabase
         .from('study_content')
         .upsert({
           session_id: sessionId,
-          type,
+          content_type: contentType,
           content,
         })
         .select()
@@ -241,17 +241,17 @@ export class SessionService {
   }
 }
 
-  static async getStudyContent(sessionId: string, type: any): Promise<{ studyContent: any | null; error: string | null }> {
+  static async getStudyContent(sessionId: string, contentType: any): Promise<{ studyContent: any | null; error: string | null }> {
     const user = await this.getCurrentUser();
     if (user && user.id === 'guest') {
-      return { studyContent: this.guestStudyContent[sessionId]?.[type] || null, error: null };
+      return { studyContent: this.guestStudyContent[sessionId]?.[contentType] || null, error: null };
     }
     try {
       const { data: studyContent, error } = await supabase
         .from('study_content')
         .select('*')
         .eq('session_id', sessionId)
-        .eq('type', type)
+        .eq('content_type', contentType)
         .single()
 
       if (error) {
