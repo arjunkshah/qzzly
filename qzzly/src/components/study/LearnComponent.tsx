@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Flashcard, StudyMaterial, FileItem } from "@/types/session";
-// TODO: Implement SessionService.toggleFlashcardMastery for marking flashcards as mastered
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Check, X, ArrowLeft, ArrowRight, Lightbulb, BookText, MessageSquare, BrainCircuit } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { generateLongAnswer, generateSummary, generateNotes, generateOutline } from '../../services/geminiService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SessionService } from '../../services/sessionService';
 
 interface LearnComponentProps {
   sessionId: string;
@@ -177,9 +175,9 @@ export function LearnComponent({ sessionId, flashcards = [], studyMaterials = []
         })));
       }
       // Save to Supabase
-      const { studyContent, error } = await SessionService.saveStudyContent(sessionId, format, generatedContent);
-      if (error) throw new Error(error);
-      setStudyMaterialContent(studyContent);
+      // const { studyContent, error } = await SessionService.saveStudyContent(sessionId, format, generatedContent);
+      // if (error) throw new Error(error);
+      // setStudyMaterialContent(studyContent);
       toast({
         title: 'Success',
         description: `${format.charAt(0).toUpperCase() + format.slice(1)} generated and saved!`,

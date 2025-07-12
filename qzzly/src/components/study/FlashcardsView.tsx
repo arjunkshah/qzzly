@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Slider } from '../ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
-import { SessionService } from '../../services/sessionService';
-import { supabase } from '@/lib/supabase';
+// Remove: import { SessionService } from '../../services/sessionService';
+// Remove all code that uses SessionService or supabase for saving sets or flashcards.
+// Only keep local state logic for flashcard sets and flashcards.
 
 interface FlashcardsViewProps {
   flashcardSets: FlashcardSet[];
@@ -45,35 +46,12 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
       const generated = await generateFlashcards(files, settings.count, settings.difficulty, settings.topic);
       // Save the set to Supabase
       const setName = newSetName || `Set ${flashcardSets.length + 1}`;
-      const { data: savedSet, error: setError } = await supabase
-        .from('flashcard_sets')
-        .insert({
-          session_id: sessionId, // use prop instead of files[0]?.session_id
-          name: setName,
-          created_at: new Date().toISOString(),
-          settings: settings,
-        })
-        .select()
-        .single();
-      if (setError) throw new Error(setError.message);
-      // Save flashcards to Supabase
-      const flashcardsToSave = generated.map((fc: Flashcard) => ({
-        set_id: savedSet.id,
-        front: fc.front,
-        back: fc.back,
-        mastered: false,
-      }));
-      const { data: savedFlashcards, error: fcError } = await supabase
-        .from('flashcards')
-        .insert(flashcardsToSave)
-        .select();
-      if (fcError) throw new Error(fcError.message);
       const newSet: FlashcardSet = {
-        id: savedSet.id,
+        id: `set-${Date.now()}`, // Generate a temporary ID for local state
         name: setName,
-        createdAt: savedSet.created_at,
+        createdAt: new Date().toISOString(),
         settings: { ...settings },
-        flashcards: savedFlashcards,
+        flashcards: generated,
       };
       onCreateSet(newSet);
       setActiveSetId(newSet.id);

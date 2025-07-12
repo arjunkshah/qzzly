@@ -7,8 +7,6 @@ import { Card, CardContent } from '../ui/card';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import { IconMic, IconMessageSquare } from '../../lib/constants';
 import { createChat } from '../../services/geminiService';
-import type { GeminiChat } from '../../services/geminiService';
-import { SessionService } from '../../services/sessionService';
 
 interface ChatViewProps {
   files: StudyFile[];
@@ -21,7 +19,7 @@ const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) =
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [chat, setChat] = useState<GeminiChat | null>(null);
+  const [chat, setChat] = useState<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,11 +50,6 @@ const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) =
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
-    // Save user message to Supabase
-    try {
-      await SessionService.addChatMessage(sessionId, userMessage);
-    } catch (e) { /* ignore for now */ }
-
     try {
       const aiResponse = await chat.sendMessage(inputMessage);
       const response: ChatMessage = {
@@ -66,10 +59,6 @@ const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) =
         timestamp: new Date().toISOString()
       };
         setMessages(prev => [...prev, response]);
-      // Save AI response to Supabase
-      try {
-        await SessionService.addChatMessage(sessionId, response);
-      } catch (e) { /* ignore for now */ }
     } catch (error: unknown) {
       const err = error as Error;
       const errorMessage: ChatMessage = {
@@ -79,9 +68,6 @@ const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) =
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
-      try {
-        await SessionService.addChatMessage(sessionId, errorMessage);
-      } catch (e) { /* ignore for now */ }
     } finally {
       setIsLoading(false);
     }
