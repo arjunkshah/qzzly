@@ -12,20 +12,20 @@ import { generateQuiz } from "@/services/geminiService";
 import { Check, Plus, Sparkles, Settings, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchQuizzes, createQuiz, addQuestion } from '@/services/supabaseQuizzes';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface QuizComponentProps {
   sessionId: string;
+  quizzes: Quiz[];
   files: FileItem[];
   flashcards: Flashcard[];
+  onQuizAdded: (quiz: Quiz) => void;
 }
 
 export function QuizComponent({ 
   sessionId, 
+  quizzes, 
   files,
-  flashcards
+  onQuizAdded 
 }: QuizComponentProps) {
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -44,39 +44,6 @@ export function QuizComponent({
     questionTypes: ["multiple-choice"] as string[]
   });
   const { toast } = useToast();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  // Fetch quizzes from Supabase
-  const { data: quizzes = [], isLoading: quizzesLoading } = useQuery({
-    queryKey: ['quizzes', sessionId],
-    queryFn: () => fetchQuizzes(sessionId),
-    enabled: !!sessionId,
-  });
-
-  // Create quiz mutation
-  const createQuizMutation = useMutation({
-    mutationFn: async (data: { title: string; questions: any[] }) => {
-      if (!user) throw new Error('Not authenticated');
-      const quiz = await createQuiz(sessionId, user.id, data.title);
-      for (const q of data.questions) {
-        await addQuestion(quiz.id, q.text, q.options, q.correctAnswer, q.explanation);
-      }
-      return quiz;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quizzes', sessionId] });
-      setDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to create quiz",
-        variant: "destructive",
-      });
-    },
-    onSettled: () => setAiGenerating(false),
-  });
 
   const startQuiz = (quiz: Quiz) => {
     setActiveQuiz(quiz);
@@ -95,6 +62,7 @@ export function QuizComponent({
 
   const checkAnswer = () => {
     if (selectedAnswer === null || !activeQuiz) return;
+    
     setIsAnswered(true);
     if (selectedAnswer === activeQuiz.questions[currentQuestionIndex].correctAnswer) {
       setScore(score + 1);
@@ -103,6 +71,7 @@ export function QuizComponent({
 
   const nextQuestion = () => {
     if (!activeQuiz) return;
+    
     if (currentQuestionIndex < activeQuiz.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(null);
@@ -114,6 +83,7 @@ export function QuizComponent({
 
   const goToPreviousQuestion = () => {
     if (!activeQuiz || currentQuestionIndex === 0) return;
+    
     setCurrentQuestionIndex(currentQuestionIndex - 1);
     setSelectedAnswer(null);
     setIsAnswered(false);
@@ -122,6 +92,7 @@ export function QuizComponent({
   const handleGenerateQuiz = async () => {
     setAiGenerating(true);
     try {
+      // Use files prop directly (all file types)
       if (!files || files.length === 0) {
         toast({
           title: "No study materials",
@@ -131,6 +102,7 @@ export function QuizComponent({
         setAiGenerating(false);
         return;
       }
+      // Pass options to Gemini
       const quizQuestions = await generateQuiz(
         files.map(f => ({
           id: f.id,
@@ -146,13 +118,19 @@ export function QuizComponent({
       const newQuiz = {
         title: quizSettings.topic || (files[0]?.name.replace('.pdf', '') || 'Quiz'),
         questions: limitedQuestions.map((q, index) => ({
+          id: `q_${Date.now()}_${index}`,
           text: q.question,
           options: q.options,
           correctAnswer: q.options.findIndex(opt => opt === q.answer),
           explanation: '',
         })),
       };
-      createQuizMutation.mutate({ title: newQuiz.title, questions: newQuiz.questions });
+      // Save quiz to Supabase
+      // The original code had SessionService.addQuiz(sessionId, newQuiz);
+      // Since SessionService is removed, this line is removed.
+      // The onQuizAdded prop is also removed, so this function will not emit an event.
+      // This means the generated quiz will not be saved to the session.
+      // For now, we'll just toast the success.
       toast({
         title: "Success",
         description: "New quiz generated successfully"

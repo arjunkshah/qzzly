@@ -9,52 +9,55 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StudySession } from "@/types/session";
-
+import { SessionService } from "@/services/sessionService";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Trash } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchSessions, createSession, deleteSession } from '@/services/supabaseSessions';
 
 export default function SessionsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const { data: sessionsResult, isLoading } = useQuery({
+    queryKey: ["sessions"],
+    queryFn: SessionService.getSessions,
+  });
+  const sessions = sessionsResult?.sessions || [];
   const [newSessionTitle, setNewSessionTitle] = useState("");
   const [newSessionDescription, setNewSessionDescription] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  // const [paywallOpen, setPaywallOpen] = useState(false);
+  // const [paywallAction, setPaywallAction] = useState<'session' | 'file' | 'chat'>('session');
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Fetch sessions from Supabase
-  const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ['sessions', user?.id],
-    queryFn: () => user ? fetchSessions(user.id) : Promise.resolve([]),
-    enabled: !!user,
-  });
-
-  // Create session mutation
   const createSessionMutation = useMutation({
-    mutationFn: async (data: { title: string; description: string }) => {
-      if (!user) throw new Error('Not authenticated');
-      return await createSession(user.id, data.title, data.description);
-    },
-    onSuccess: (session) => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', user?.id] });
+    mutationFn: (data: { title: string; description: string }) => SessionService.createSession({ title: data.title, description: data.description }),
+    onSuccess: async (result) => {
+      if (result.error || !result.session) {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create session",
+          variant: "destructive",
+        });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
       setNewSessionTitle("");
       setNewSessionDescription("");
       setDialogOpen(false);
       toast({
         title: "Success",
-        description: `"${session.title}" has been created successfully.`,
+        description: `"${result.session.title}" has been created successfully.`,
       });
       setTimeout(() => {
-        navigate(`/session/${session.id}`);
+        navigate(`/session/${result.session.id}`);
       }, 100);
     },
-    onError: (error: any) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: error?.message || "Failed to create session",
+        description: "Failed to create session",
         variant: "destructive",
       });
     },
@@ -75,22 +78,29 @@ export default function SessionsPage() {
     });
   };
 
-  // Delete session mutation
   const deleteSessionMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await deleteSession(id);
-    },
-    onSuccess: (_result, id) => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', user?.id] });
+    mutationFn: (id: string) => SessionService.deleteSession(id),
+    onSuccess: (result, id) => {
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) =>
+        old.filter((s) => s.id !== id)
+      );
       toast({
         title: "Success",
         description: "Session has been deleted successfully.",
       });
     },
-    onError: (error: any) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: error?.message || "Failed to delete session",
+        description: "Failed to delete session",
         variant: "destructive",
       });
     },
@@ -211,11 +221,11 @@ export default function SessionsPage() {
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span>Created: {formatDate(session.createdat)}</span>
+                      <span>Created: {formatDate(session.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      <span>Updated: {formatDate(session.updatedat)}</span>
+                      <span>Updated: {formatDate(session.updated_at)}</span>
                     </div>
                   </div>
                 </CardContent>

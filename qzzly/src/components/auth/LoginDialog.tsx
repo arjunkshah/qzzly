@@ -1,4 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginDialogProps {
@@ -6,44 +16,48 @@ interface LoginDialogProps {
 }
 
 export function LoginDialog({ children }: LoginDialogProps) {
-  const { signIn, signInWithGoogle, isLoading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    const result = await signIn(email, password);
-    if (!result.success) setError(result.error || 'Login failed');
-  };
+  const [isOpen, setIsOpen] = useState(false);
+  const { signInWithGoogle, loading } = useAuth();
+  const { toast } = useToast();
 
   const handleGoogleSignIn = async () => {
-    setError(null);
     const result = await signInWithGoogle();
-    if (!result.success) setError(result.error || 'Google sign in failed');
+    if (result.success) {
+      toast({
+        title: "Logging in with Google...",
+        description: "You will be redirected shortly",
+      });
+    } else {
+      toast({
+        title: "Google login failed",
+        description: result.error || "Please try again",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input
-        type="email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        placeholder="Email"
-        required
-      />
-      <input
-        type="password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        placeholder="Password"
-        required
-      />
-      <button type="submit" disabled={isLoading}>Sign In</button>
-      <button type="button" onClick={handleGoogleSignIn} disabled={isLoading}>Sign In with Google</button>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      {children}
-    </form>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {children || <Button variant="outline">Log in</Button>}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">Log in to Qzzly</DialogTitle>
+          <DialogDescription>
+            Log in with Google to access your account. Email/password login is not supported.
+          </DialogDescription>
+        </DialogHeader>
+        <Button 
+          type="button" 
+          variant="outline" 
+          className="w-full mt-2" 
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+        >
+              Continue with Google
+            </Button>
+      </DialogContent>
+    </Dialog>
   );
 }

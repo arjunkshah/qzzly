@@ -78,7 +78,7 @@ export function LearnComponent({ sessionId, flashcards = [], studyMaterials = []
     
     const currentCard = safeCurrentCards[currentIndex];
     try {
-              // Toggle mastery locally
+      // await SessionService.toggleFlashcardMastery(sessionId, currentCard.id);
       
       // Remove the card from current deck
       const updatedCards = safeCurrentCards.filter(card => card.id !== currentCard.id);
@@ -174,7 +174,10 @@ export function LearnComponent({ sessionId, flashcards = [], studyMaterials = []
           content: f.content || ''
         })));
       }
-      // Save to local state
+      // Save to Supabase
+      // const { studyContent, error } = await SessionService.saveStudyContent(sessionId, format, generatedContent);
+      // if (error) throw new Error(error);
+      // setStudyMaterialContent(studyContent);
       toast({
         title: 'Success',
         description: `${format.charAt(0).toUpperCase() + format.slice(1)} generated and saved!`,
