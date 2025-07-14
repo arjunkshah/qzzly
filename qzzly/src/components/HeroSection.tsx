@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { SignupDialog } from "@/components/auth/SignupDialog";
-import { SessionService } from "@/services/sessionService";
+
 
 const HeroSection = () => {
   const [isDragging, setIsDragging] = useState(false);
@@ -43,24 +43,16 @@ const HeroSection = () => {
         return;
       }
       
-      // Create a new study session
+      // Create a new study session (mock)
       const sessionName = firstFile.name.replace(/\.pdf$/, '');
-      const newSession = await SessionService.createSession({ title: sessionName });
-      if (newSession.error || !newSession.session) {
-        toast({
-          title: "Session creation failed",
-          description: newSession.error || "Unknown error",
-          variant: "destructive"
-        });
-        return;
-      }
+      const mockSessionId = `session-${Date.now()}`;
       toast({
         title: "Files uploaded successfully",
         description: `Created new study session: ${sessionName}`
       });
       
       // Navigate to the new session
-      navigate(`/session/${newSession.session.id}`);
+      navigate(`/session/${mockSessionId}`);
     } catch (error) {
       toast({
         title: "Upload failed",

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StudySession } from "@/types/session";
-import { SessionService } from "@/services/sessionService";
+
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Trash } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
@@ -18,11 +18,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 export default function SessionsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: sessionsResult, isLoading } = useQuery({
-    queryKey: ["sessions"],
-    queryFn: SessionService.getSessions,
-  });
-  const sessions = sessionsResult?.sessions || [];
+  const [sessions, setSessions] = useState<StudySession[]>([
+    {
+      id: "mock-session-1",
+      title: "Sample Study Session",
+      description: "A sample study session for testing",
+      createdat: new Date().toISOString(),
+      updatedat: new Date().toISOString(),
+      files: [],
+      flashcardSets: [],
+      quizzes: [],
+    }
+  ]);
+  const isLoading = false;
   const [newSessionTitle, setNewSessionTitle] = useState("");
   const [newSessionDescription, setNewSessionDescription] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -32,7 +40,19 @@ export default function SessionsPage() {
   const { toast } = useToast();
 
   const createSessionMutation = useMutation({
-    mutationFn: (data: { title: string; description: string }) => SessionService.createSession({ title: data.title, description: data.description }),
+    mutationFn: async (data: { title: string; description: string }) => {
+      const newSession: StudySession = {
+        id: `session-${Date.now()}`,
+        title: data.title,
+        description: data.description,
+        createdat: new Date().toISOString(),
+        updatedat: new Date().toISOString(),
+        files: [],
+        flashcardSets: [],
+        quizzes: [],
+      };
+      return { session: newSession, error: null };
+    },
     onSuccess: async (result) => {
       if (result.error || !result.session) {
         toast({
@@ -42,7 +62,7 @@ export default function SessionsPage() {
         });
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      setSessions(prev => [...prev, result.session]);
       setNewSessionTitle("");
       setNewSessionDescription("");
       setDialogOpen(false);
@@ -79,7 +99,9 @@ export default function SessionsPage() {
   };
 
   const deleteSessionMutation = useMutation({
-    mutationFn: (id: string) => SessionService.deleteSession(id),
+    mutationFn: async (id: string) => {
+      return { error: null };
+    },
     onSuccess: (result, id) => {
       if (result.error) {
         toast({
@@ -89,9 +111,7 @@ export default function SessionsPage() {
         });
         return;
       }
-      queryClient.setQueryData<StudySession[]>(["sessions"], (old = []) =>
-        old.filter((s) => s.id !== id)
-      );
+      setSessions(prev => prev.filter(s => s.id !== id));
       toast({
         title: "Success",
         description: "Session has been deleted successfully.",
@@ -221,11 +241,11 @@ export default function SessionsPage() {
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span>Created: {formatDate(session.created_at)}</span>
+                      <span>Created: {formatDate(session.createdat)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      <span>Updated: {formatDate(session.updated_at)}</span>
+                      <span>Updated: {formatDate(session.updatedat)}</span>
                     </div>
                   </div>
                 </CardContent>

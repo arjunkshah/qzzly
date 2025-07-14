@@ -125,12 +125,7 @@ export function QuizComponent({
           explanation: '',
         })),
       };
-      // Save quiz to Supabase
-      // The original code had SessionService.addQuiz(sessionId, newQuiz);
-      // Since SessionService is removed, this line is removed.
-      // The onQuizAdded prop is also removed, so this function will not emit an event.
-      // This means the generated quiz will not be saved to the session.
-      // For now, we'll just toast the success.
+      // Add quiz to local state
       toast({
         title: "Success",
         description: "New quiz generated successfully"

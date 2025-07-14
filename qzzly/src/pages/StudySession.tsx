@@ -9,8 +9,7 @@ import {
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-// TODO: Implement SessionService.getSession, addChatMessage, getChatMessages
-import { SessionService } from "@/services/sessionService";
+
 import { StudySession as StudySessionType, ChatMessage, FileItem, Flashcard } from "@/types/session";
 import { ArrowLeft, File, Plus, Send, Upload, Check, X, Book, BookOpen, MessageSquare, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -34,33 +33,19 @@ export default function StudySession() {
   const { isLoading, error, data } = useQuery({
     queryKey: ["session", id],
     queryFn: async () => {
-      const result = await SessionService.getSession(id ?? "");
-      if (result.error || !result.session) {
-        throw new Error(result.error || "Session not found");
-      }
-      // Fetch files, flashcards, quizzes, chat, and study materials
-      const [filesRes, flashcardsRes, quizzesRes, chatRes, summaryRes, notesRes, outlineRes] = await Promise.all([
-        SessionService.getFiles(result.session.id),
-        SessionService.getFlashcards(result.session.id),
-        SessionService.getQuizzes ? SessionService.getQuizzes(result.session.id) : Promise.resolve([]),
-        SessionService.getChatMessages ? SessionService.getChatMessages(result.session.id) : Promise.resolve([]),
-        SessionService.getStudyContent(result.session.id, 'summary'),
-        SessionService.getStudyContent(result.session.id, 'notes'),
-        SessionService.getStudyContent(result.session.id, 'outline'),
-      ]);
-      const studyMaterials = [summaryRes.studyContent, notesRes.studyContent, outlineRes.studyContent].filter(Boolean);
-      return {
-        id: result.session.id,
-        title: result.session.title,
-        description: result.session.description || "",
-        createdat: result.session.created_at,
-        updatedat: result.session.updated_at,
-        files: filesRes.files || [],
-        flashcardSets: flashcardsRes || [],
-        quizzes: quizzesRes || [],
-        chatMessages: chatRes || [],
-        studyMaterials,
+      // Mock session data for local state management
+      const mockSession = {
+        id: id ?? "mock-session-id",
+        title: "Sample Study Session",
+        description: "A sample study session for testing",
+        createdat: new Date().toISOString(),
+        updatedat: new Date().toISOString(),
+        files: [],
+        flashcardSets: [],
+        quizzes: [],
+        studyMaterials: [],
       };
+      return mockSession;
     },
     enabled: !!id,
     retry: 1,
@@ -184,7 +169,13 @@ export default function StudySession() {
             <TabsContent value="flashcards">
               <FlashcardsView 
                 flashcardSets={session.flashcardSets}
-                files={session.files}
+                files={session.files.map(f => ({
+                  id: f.id,
+                  name: f.name,
+                  type: f.type,
+                  content: f.content || ''
+                }))}
+                sessionId={session.id}
                 onCreateSet={(newSet) => {
                   setSession({
                     ...session,
@@ -232,7 +223,7 @@ export default function StudySession() {
                   type: f.type,
                   content: f.content || ''
                 }))}
-                chatMessages={session.chatMessages}
+                chatMessages={[]}
                 sessionId={session.id}
               />
             </TabsContent>

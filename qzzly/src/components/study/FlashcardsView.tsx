@@ -8,9 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Slider } from '../ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
-// Remove: import { SessionService } from '../../services/sessionService';
-// Remove all code that uses SessionService or supabase for saving sets or flashcards.
-// Only keep local state logic for flashcard sets and flashcards.
+
 
 interface FlashcardsViewProps {
   flashcardSets: FlashcardSet[];
@@ -44,7 +42,7 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
       try {
       // Generate flashcards using Gemini with actual files
       const generated = await generateFlashcards(files, settings.count, settings.difficulty, settings.topic);
-      // Save the set to Supabase
+      // Create the set locally
       const setName = newSetName || `Set ${flashcardSets.length + 1}`;
       const newSet: FlashcardSet = {
         id: `set-${Date.now()}`, // Generate a temporary ID for local state
