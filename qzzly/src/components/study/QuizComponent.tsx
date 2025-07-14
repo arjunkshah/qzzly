@@ -322,7 +322,7 @@ export function QuizComponent({
                   </CardContent>
                   <CardFooter>
                     <Button 
-                      className="gradient-bg w-full" 
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 w-full" 
                       onClick={() => startQuiz(quiz)}
                     >
                       Start Quiz
@@ -349,7 +349,7 @@ export function QuizComponent({
                   Quiz Options
                 </Button>
                 <Button 
-                  className="gradient-bg" 
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300" 
                   onClick={handleGenerateQuiz}
                   disabled={aiGenerating}
                 >
@@ -366,7 +366,7 @@ export function QuizComponent({
         </div>
       ) : quizCompleted ? (
         <div className="bg-white rounded-lg border p-8 text-center">
-          <div className="w-16 h-16 rounded-full gradient-bg mx-auto flex items-center justify-center mb-4">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 mx-auto flex items-center justify-center mb-4">
             <Check className="h-8 w-8 text-white" />
           </div>
           <h3 className="text-2xl font-bold mb-2">Quiz Completed!</h3>
@@ -385,7 +385,7 @@ export function QuizComponent({
               Retry Quiz
             </Button>
             <Button 
-              className="gradient-bg"
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
               onClick={() => setActiveQuiz(null)}
             >
               Back to Quizzes
@@ -503,7 +503,7 @@ export function QuizComponent({
               
               {!isAnswered ? (
                 <Button 
-                  className="gradient-bg" 
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300" 
                   onClick={checkAnswer}
                   disabled={selectedAnswer === null}
                 >
@@ -511,7 +511,7 @@ export function QuizComponent({
                 </Button>
               ) : (
                 <Button 
-                  className="gradient-bg" 
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300" 
                   onClick={nextQuestion}
                 >
                   {currentQuestionIndex < activeQuiz.questions.length - 1 ? "Next Question" : "Finish Quiz"}

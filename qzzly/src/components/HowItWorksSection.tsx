@@ -18,7 +18,7 @@ const HowItWorksSection = () => {
           <div className="hidden md:block absolute top-24 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
           
           <div className="text-center relative animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <div className="w-20 h-20 gradient-bg rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-8 shadow-lg shadow-purple-200">1</div>
+            <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-8 shadow-lg shadow-purple-200">1</div>
             <h3 className="text-2xl font-bold mb-4">Upload Your PDFs</h3>
             <p className="text-gray-600 leading-relaxed mx-auto max-w-xs">
               Simply drag and drop your study materials, lecture notes, or textbook PDFs.
@@ -26,7 +26,7 @@ const HowItWorksSection = () => {
           </div>
           
           <div className="text-center relative animate-fade-in" style={{ animationDelay: "0.4s" }}>
-            <div className="w-20 h-20 gradient-bg rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-8 shadow-lg shadow-purple-200">2</div>
+            <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-8 shadow-lg shadow-purple-200">2</div>
             <h3 className="text-2xl font-bold mb-4">AI Analysis</h3>
             <p className="text-gray-600 leading-relaxed mx-auto max-w-xs">
               Our advanced AI reads and understands your content, identifying key concepts and knowledge points.
@@ -34,7 +34,7 @@ const HowItWorksSection = () => {
           </div>
           
           <div className="text-center relative animate-fade-in" style={{ animationDelay: "0.6s" }}>
-            <div className="w-20 h-20 gradient-bg rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-8 shadow-lg shadow-purple-200">3</div>
+            <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-8 shadow-lg shadow-purple-200">3</div>
             <h3 className="text-2xl font-bold mb-4">Study Smarter</h3>
             <p className="text-gray-600 leading-relaxed mx-auto max-w-xs">
               Access your personalized quizzes, flashcards, and mock tests anytime, anywhere.

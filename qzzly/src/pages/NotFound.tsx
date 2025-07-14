@@ -29,7 +29,7 @@ const NotFound = () => {
           </svg>
           <h1 className="text-5xl font-extrabold text-purple-700 mb-2">404</h1>
           <p className="text-xl text-gray-600 mb-6">Sorry, we couldn't find that page.</p>
-          <Button className="gradient-bg px-8 py-3 text-lg font-semibold shadow-md" asChild>
+          <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 px-8 py-3 text-lg font-semibold shadow-md" asChild>
             <a href="/sessions">Go to My Sessions</a>
           </Button>
           <Button variant="ghost" className="mt-2 text-purple-600 hover:underline" asChild>

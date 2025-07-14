@@ -110,14 +110,14 @@ const HeroSection = () => {
           <div className="flex flex-col sm:flex-row gap-5 animate-fade-in" style={{ animationDelay: "0.4s" }}>
             {user ? (
               <Button 
-                className="gradient-bg text-white px-8 py-7 rounded-lg text-lg font-medium shadow-lg shadow-purple-200"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 text-white px-8 py-7 rounded-lg text-lg font-medium shadow-lg shadow-purple-200"
                 onClick={handleGetStarted}
               >
                 Go to Study Sessions
               </Button>
             ) : (
               <SignupDialog>
-                <Button className="gradient-bg text-white px-8 py-7 rounded-lg text-lg font-medium shadow-lg shadow-purple-200">
+                <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 text-white px-8 py-7 rounded-lg text-lg font-medium shadow-lg shadow-purple-200">
                   Get Started Free
                 </Button>
               </SignupDialog>

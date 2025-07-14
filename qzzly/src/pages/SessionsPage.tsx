@@ -134,7 +134,7 @@ export default function SessionsPage() {
           
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gradient-bg">
+              <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300">
                 Create New Session
               </Button>
             </DialogTrigger>
@@ -172,7 +172,7 @@ export default function SessionsPage() {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button className="gradient-bg" onClick={handleCreateSession}>
+                <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300" onClick={handleCreateSession}>
                   Create Session
                 </Button>
               </DialogFooter>
@@ -238,7 +238,7 @@ export default function SessionsPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="w-16 h-16 gradient-bg rounded-full mx-auto mb-4 flex items-center justify-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center">
               <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" />
                 <path d="M2 17L12 22L22 17V7L12 12L2 7V17Z" fill="currentColor" fillOpacity="0.8" />
@@ -249,7 +249,7 @@ export default function SessionsPage() {
               Create your first study session to upload PDFs and start generating flashcards, quizzes, and more.
             </p>
             <Button
-              className="gradient-bg"
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
               onClick={() => setDialogOpen(true)}
             >
               Create Your First Session

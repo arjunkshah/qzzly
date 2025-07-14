@@ -352,7 +352,7 @@ export function LearnComponent({ sessionId, flashcards = [], studyMaterials = []
                 Congratulations! You've mastered all your flashcards.
               </p>
               <Button 
-                className="gradient-bg" 
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300" 
                 onClick={handleRestartAllCards}
               >
                 Restart All Cards

@@ -16,7 +16,7 @@ export const NavBar = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Link to="/" className="text-2xl font-bold flex items-center">
-              <div className="w-9 h-9 mr-2 gradient-bg rounded-md flex items-center justify-center">
+              <div className="w-9 h-9 mr-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-md flex items-center justify-center">
                 <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" />
                   <path d="M2 17L12 22L22 17V7L12 12L2 7V17Z" fill="currentColor" fillOpacity="0.8" />
@@ -39,7 +39,7 @@ export const NavBar = () => {
                   </Button>
                 </LoginDialog>
                 <SignupDialog>
-                  <Button className="gradient-bg font-medium shadow-md shadow-purple-200">
+                  <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-medium shadow-md shadow-purple-200">
                     Sign up
                   </Button>
                 </SignupDialog>
