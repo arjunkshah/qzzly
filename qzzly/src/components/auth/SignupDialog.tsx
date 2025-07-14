@@ -56,8 +56,8 @@ export function SignupDialog({ children }: SignupDialogProps) {
           onClick={handleGoogleSignIn}
           disabled={loading}
         >
-              Continue with Google
-            </Button>
+          Continue with Google
+        </Button>
       </DialogContent>
     </Dialog>
   );
