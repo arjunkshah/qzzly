@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: email.split('@')[0]
     };
     setUser(mockUser);
-    return { success: true };
+      return { success: true };
   };
 
   const signUp = async (email: string, password: string) => {
@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: email.split('@')[0]
     };
     setUser(mockUser);
-    return { success: true };
+      return { success: true };
   };
 
   const signInWithGoogle = async () => {
@@ -54,11 +54,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: 'Google User'
     };
     setUser(mockUser);
-    return { success: true };
+      return { success: true };
   };
 
   const signOut = async () => {
-    setUser(null);
+      setUser(null);
   };
 
   const value = {

@@ -39,10 +39,10 @@ export function FilesComponent({ sessionId, files, onFileAdded }: FilesComponent
       for (const file of processedFiles) {
         // Add file to local state
         onFileAdded(file);
-        toast({
-          title: "File uploaded",
-          description: `${file.name} was uploaded successfully.`,
-        });
+          toast({
+            title: "File uploaded",
+            description: `${file.name} was uploaded successfully.`,
+          });
       }
     } catch (error) {
       console.error("Error uploading files:", error);
