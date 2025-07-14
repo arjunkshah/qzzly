@@ -14,70 +14,47 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Trash } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchSessions, createSession, deleteSession } from '@/services/supabaseSessions';
 
 export default function SessionsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [sessions, setSessions] = useState<StudySession[]>([
-    {
-      id: "mock-session-1",
-      title: "Sample Study Session",
-      description: "A sample study session for testing",
-      createdat: new Date().toISOString(),
-      updatedat: new Date().toISOString(),
-      files: [],
-      flashcardSets: [],
-      quizzes: [],
-    }
-  ]);
-  const isLoading = false;
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [newSessionTitle, setNewSessionTitle] = useState("");
   const [newSessionDescription, setNewSessionDescription] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  // const [paywallOpen, setPaywallOpen] = useState(false);
-  // const [paywallAction, setPaywallAction] = useState<'session' | 'file' | 'chat'>('session');
-  const navigate = useNavigate();
-  const { toast } = useToast();
 
+  // Fetch sessions from Supabase
+  const { data: sessions = [], isLoading } = useQuery({
+    queryKey: ['sessions', user?.id],
+    queryFn: () => user ? fetchSessions(user.id) : Promise.resolve([]),
+    enabled: !!user,
+  });
+
+  // Create session mutation
   const createSessionMutation = useMutation({
     mutationFn: async (data: { title: string; description: string }) => {
-      const newSession: StudySession = {
-        id: `session-${Date.now()}`,
-        title: data.title,
-        description: data.description,
-        createdat: new Date().toISOString(),
-        updatedat: new Date().toISOString(),
-        files: [],
-        flashcardSets: [],
-        quizzes: [],
-      };
-      return { session: newSession, error: null };
+      if (!user) throw new Error('Not authenticated');
+      return await createSession(user.id, data.title, data.description);
     },
-    onSuccess: async (result) => {
-      if (result.error || !result.session) {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to create session",
-          variant: "destructive",
-        });
-        return;
-      }
-      setSessions(prev => [...prev, result.session]);
+    onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', user?.id] });
       setNewSessionTitle("");
       setNewSessionDescription("");
       setDialogOpen(false);
       toast({
         title: "Success",
-        description: `"${result.session.title}" has been created successfully.`,
+        description: `"${session.title}" has been created successfully.`,
       });
       setTimeout(() => {
-        navigate(`/session/${result.session.id}`);
+        navigate(`/session/${session.id}`);
       }, 100);
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to create session",
+        description: error?.message || "Failed to create session",
         variant: "destructive",
       });
     },
@@ -98,29 +75,22 @@ export default function SessionsPage() {
     });
   };
 
+  // Delete session mutation
   const deleteSessionMutation = useMutation({
     mutationFn: async (id: string) => {
-      return { error: null };
+      await deleteSession(id);
     },
-    onSuccess: (result, id) => {
-      if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        });
-        return;
-      }
-      setSessions(prev => prev.filter(s => s.id !== id));
+    onSuccess: (_result, id) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', user?.id] });
       toast({
         title: "Success",
         description: "Session has been deleted successfully.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to delete session",
+        description: error?.message || "Failed to delete session",
         variant: "destructive",
       });
     },

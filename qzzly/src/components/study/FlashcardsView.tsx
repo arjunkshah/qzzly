@@ -8,27 +8,64 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Slider } from '../ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
-
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchFlashcardSets, createFlashcardSet, addFlashcard, updateFlashcard } from '../../services/supabaseFlashcards';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface FlashcardsViewProps {
-  flashcardSets: FlashcardSet[];
-  onCreateSet: (set: FlashcardSet) => void;
-  onUpdateSet: (set: FlashcardSet) => void;
   files: StudyFile[];
   sessionId: string;
 }
 
-const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreateSet, onUpdateSet, files, sessionId }) => {
+const FlashcardsView: React.FC<FlashcardsViewProps> = ({ files, sessionId }) => {
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newSetName, setNewSetName] = useState('');
   const [settings, setSettings] = useState({ count: 15, difficulty: 'medium', topic: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // State for studying a set
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Fetch flashcard sets from Supabase
+  const { data: flashcardSets = [], isLoading: setsLoading } = useQuery({
+    queryKey: ['flashcardSets', sessionId],
+    queryFn: () => fetchFlashcardSets(sessionId),
+    enabled: !!sessionId,
+  });
+
+  // Create set mutation
+  const createSetMutation = useMutation({
+    mutationFn: async (data: { name: string; settings: any; cards: Flashcard[] }) => {
+      if (!user) throw new Error('Not authenticated');
+      // Create set in Supabase
+      const set = await createFlashcardSet(sessionId, user.id, data.name, data.settings);
+      // Add cards to set
+      for (const card of data.cards) {
+        await addFlashcard(set.id, card.front, card.back);
+      }
+      return set;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['flashcardSets', sessionId] });
+      setShowCreateDialog(false);
+      setNewSetName('');
+    },
+    onError: (err: any) => setError(err?.message || 'Failed to create set'),
+    onSettled: () => setIsLoading(false),
+  });
+
+  // Update card mutation (for toggling mastered)
+  const updateCardMutation = useMutation({
+    mutationFn: async (data: { id: string; updates: Partial<Flashcard> }) => {
+      return await updateFlashcard(data.id, data.updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['flashcardSets', sessionId] });
+    },
+  });
 
   // When activeSet changes, reset study state
   useEffect(() => {
@@ -37,37 +74,26 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
   }, [activeSetId]);
 
   const handleCreateSet = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
+    setIsLoading(true);
+    setError(null);
+    try {
       // Generate flashcards using Gemini with actual files
       const generated = await generateFlashcards(files, settings.count, settings.difficulty, settings.topic);
-      // Create the set locally
       const setName = newSetName || `Set ${flashcardSets.length + 1}`;
-      const newSet: FlashcardSet = {
-        id: `set-${Date.now()}`, // Generate a temporary ID for local state
-        name: setName,
-        createdAt: new Date().toISOString(),
-        settings: { ...settings },
-        flashcards: generated,
-      };
-      onCreateSet(newSet);
-      setActiveSetId(newSet.id);
-      setShowCreateDialog(false);
-      setNewSetName('');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to generate flashcards');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      createSetMutation.mutate({ name: setName, settings: { ...settings }, cards: generated });
+      setActiveSetId(null); // Will be set after refetch
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate flashcards');
+      setIsLoading(false);
+    }
+  };
 
   const activeSet = flashcardSets.find(set => set.id === activeSetId) || null;
 
   // UI: If no set is selected, show list and create button
   if (!activeSet) {
     return (
-      <ViewContainer title="Flashcards" isLoading={isLoading} error={error}>
+      <ViewContainer title="Flashcards" isLoading={isLoading || setsLoading} error={error}>
         <div className="flex flex-col items-center space-y-6">
           <div className="w-full max-w-xl">
             <div className="flex justify-between items-center mb-4">
@@ -82,7 +108,7 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
                   <li key={set.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-purple-50" onClick={() => setActiveSetId(set.id)}>
                     <div>
                       <div className="font-semibold">{set.name}</div>
-                      <div className="text-xs text-gray-500">{set.flashcards.filter(fc => fc.mastered).length} / {set.flashcards.length} mastered</div>
+                      <div className="text-xs text-gray-500">{set.flashcards?.filter(fc => fc.mastered).length || 0} / {set.flashcards?.length || 0} mastered</div>
                     </div>
                     <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); setActiveSetId(set.id); }}>Study</Button>
                   </li>
@@ -133,7 +159,7 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
   }
 
   // UI: Study a set
-  const flashcards = activeSet.flashcards;
+  const flashcards = activeSet.flashcards || [];
   const currentCard = flashcards[currentIndex];
 
   const nextCard = () => {
@@ -151,15 +177,13 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
   };
 
   const toggleMastered = () => {
-    const updatedCards = [...flashcards];
-    updatedCards[currentIndex].mastered = !updatedCards[currentIndex].mastered;
-    const updatedSet = { ...activeSet, flashcards: updatedCards };
-    onUpdateSet(updatedSet);
+    if (!currentCard) return;
+    updateCardMutation.mutate({ id: currentCard.id, updates: { mastered: !currentCard.mastered } });
   };
 
-  if (isLoading) {
+  if (isLoading || setsLoading) {
     return (
-      <ViewContainer title="Flashcards" isLoading={isLoading} error={error}>
+      <ViewContainer title="Flashcards" isLoading={isLoading || setsLoading} error={error}>
       <div className="flex justify-center items-center h-32">Generating flashcards...</div>
       </ViewContainer>
     );
@@ -167,23 +191,23 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
 
   if (error) {
     return (
-      <ViewContainer title="Flashcards" isLoading={isLoading} error={error}>
+      <ViewContainer title="Flashcards" isLoading={isLoading || setsLoading} error={error}>
       <div className="flex justify-center items-center h-32 text-red-500">{error}</div>
       </ViewContainer>
     );
   }
 
   return (
-    <ViewContainer title={activeSet.name} isLoading={isLoading} error={error}>
+    <ViewContainer title={activeSet.name} isLoading={isLoading || setsLoading} error={error}>
       <div className="flex flex-col items-center space-y-10">
         <div className="text-base text-gray-500 mb-2">
           Card {currentIndex + 1} of {flashcards.length} | {flashcards.filter(fc => fc.mastered).length} mastered
         </div>
         <div className="w-full flex justify-center">
           <div className="bg-white rounded-3xl shadow-2xl p-12 w-full max-w-2xl min-h-[320px] flex flex-col justify-center items-center border border-gray-200 transition-all duration-300">
-            <div className="text-3xl font-extrabold mb-6 text-gray-900">{currentCard.front}</div>
+            <div className="text-3xl font-extrabold mb-6 text-gray-900">{currentCard?.front}</div>
               {showAnswer && (
-              <div className="text-2xl text-gray-700 border-t pt-8 mt-8 w-full text-center">{currentCard.back}</div>
+              <div className="text-2xl text-gray-700 border-t pt-8 mt-8 w-full text-center">{currentCard?.back}</div>
               )}
             </div>
         </div>
@@ -194,11 +218,11 @@ const FlashcardsView: React.FC<FlashcardsViewProps> = ({ flashcardSets, onCreate
         </div>
         <div className="flex justify-center mt-6">
           <Button 
-            variant={currentCard.mastered ? "default" : "outline"}
+            variant={currentCard?.mastered ? "default" : "outline"}
             onClick={toggleMastered}
             className="min-w-[220px] py-3 text-lg"
           >
-            {currentCard.mastered ? 'Mastered' : 'Mark as Mastered'}
+            {currentCard?.mastered ? 'Mastered' : 'Mark as Mastered'}
           </Button>
         </div>
         <div className="flex justify-center mt-8">

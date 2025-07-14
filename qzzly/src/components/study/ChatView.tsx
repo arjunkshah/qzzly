@@ -7,67 +7,62 @@ import { Card, CardContent } from '../ui/card';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import { IconMic, IconMessageSquare } from '../../lib/constants';
 import { createChat } from '../../services/geminiService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchChatMessages, sendChatMessage } from '../../services/supabaseChat';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ChatViewProps {
   files: StudyFile[];
-  chatMessages: ChatMessage[];
   sessionId: string;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+const ChatView: React.FC<ChatViewProps> = ({ files, sessionId }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chat, setChat] = useState<any>(null);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Fetch chat messages from Supabase
+  const { data: messages = [], isLoading: messagesLoading } = useQuery({
+    queryKey: ['chatMessages', sessionId],
+    queryFn: () => fetchChatMessages(sessionId),
+    enabled: !!sessionId,
+  });
+
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async (data: { role: 'user' | 'assistant'; content: string }) => {
+      if (!user) throw new Error('Not authenticated');
+      return await sendChatMessage(sessionId, user.id, data.role, data.content);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chatMessages', sessionId] });
+    },
+  });
 
   useEffect(() => {
     setChat(createChat(files));
   }, [files]);
 
   useEffect(() => {
-    setMessages(chatMessages || []);
-  }, [chatMessages]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !chat) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputMessage,
-      timestamp: new Date().toISOString()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
     setIsLoading(true);
+    // Store user message in Supabase
+    sendMessageMutation.mutate({ role: 'user', content: inputMessage });
+    setInputMessage('');
     try {
       const aiResponse = await chat.sendMessage(inputMessage);
-      const response: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: aiResponse.text,
-        timestamp: new Date().toISOString()
-      };
-        setMessages(prev => [...prev, response]);
+      // Store assistant message in Supabase
+      sendMessageMutation.mutate({ role: 'assistant', content: aiResponse.text });
     } catch (error: unknown) {
       const err = error as Error;
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: err?.message || 'Sorry, I encountered an error while processing your request. Please try again.',
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      sendMessageMutation.mutate({ role: 'assistant', content: err?.message || 'Sorry, I encountered an error while processing your request. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +76,7 @@ const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) =
   };
 
   return (
-    <ViewContainer title="Chat with your Documents" isLoading={false} error={null}>
+    <ViewContainer title="Chat with your Documents" isLoading={messagesLoading} error={null}>
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto space-y-6 mb-4 px-2">
           {messages.length === 0 && (
@@ -99,8 +94,7 @@ const ChatView: React.FC<ChatViewProps> = ({ files, chatMessages, sessionId }) =
                 <div className="text-base whitespace-pre-line">
                     <MarkdownRenderer content={message.content} />
                   </div>
-                {/* Remove timestamp rendering */}
-                  </div>
+              </div>
             </div>
           ))}
           {isLoading && (

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 interface AuthUser {
   id: string;
@@ -20,68 +21,83 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-
+  useEffect(() => {
+    const getUser = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email || '',
+          name: data.user.user_metadata?.name || undefined,
+        });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    };
+    getUser();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || undefined,
+        });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   const signIn = async (email: string, password: string) => {
-    // Mock sign in - always succeeds
-    const mockUser: AuthUser = {
-      id: 'mock-user-id',
-      email: email,
-      name: email.split('@')[0]
-    };
-    setUser(mockUser);
-      return { success: true };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   };
 
   const signUp = async (email: string, password: string) => {
-    // Mock sign up - always succeeds
-    const mockUser: AuthUser = {
-      id: 'mock-user-id',
-      email: email,
-      name: email.split('@')[0]
-    };
-    setUser(mockUser);
-      return { success: true };
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   };
 
   const signInWithGoogle = async () => {
-    // Mock Google sign in - always succeeds
-    const mockUser: AuthUser = {
-      id: 'mock-google-user-id',
-      email: 'user@gmail.com',
-      name: 'Google User'
-    };
-    setUser(mockUser);
-      return { success: true };
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   };
 
   const signOut = async () => {
-      setUser(null);
-  };
-
-  const value = {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    signIn,
-    signUp,
-    signInWithGoogle,
-    signOut,
+    await supabase.auth.signOut();
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        signIn,
+        signUp,
+        signInWithGoogle,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 }
